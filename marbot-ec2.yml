@@ -1,0 +1,348 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: EC2 instance monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'EC2'
+      Parameters:
+      - InstanceId
+      - InstanceType
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - CPUUtilizationThreshold
+      - CPUCreditBalanceThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  InstanceId:
+    Description: 'The instance ID of the EC2 instance that you want to monitor.'
+    Type: 'AWS::EC2::Instance::Id'
+  InstanceType:
+    Description: 'The instance type of the EC2 instance that you want to monitor.'
+    Type: String
+    AllowedValues:
+    - 'c4.large'
+    - 'c4.xlarge'
+    - 'c4.2xlarge'
+    - 'c4.4xlarge'
+    - 'c4.8xlarge'
+    - 'c5.large'
+    - 'c5.xlarge'
+    - 'c5.2xlarge'
+    - 'c5.4xlarge'
+    - 'c5.9xlarge'
+    - 'c5.18xlarge'
+    - 'd2.xlarge'
+    - 'd2.2xlarge'
+    - 'd2.4xlarge'
+    - 'd2.8xlarge'
+    - 'g3.4xlarge'
+    - 'g3.8xlarge'
+    - 'g3.16xlarge'
+    - 'h1.2xlarge'
+    - 'h1.4xlarge'
+    - 'h1.8xlarge'
+    - 'h1.16xlarge'
+    - 'i3.large'
+    - 'i3.xlarge'
+    - 'i3.2xlarge'
+    - 'i3.4xlarge'
+    - 'i3.8xlarge'
+    - 'i3.16xlarge'
+    - 'm3.medium'
+    - 'm3.large'
+    - 'm3.xlarge'
+    - 'm3.2xlarge'
+    - 'm4.large'
+    - 'm4.xlarge'
+    - 'm4.2xlarge'
+    - 'm4.4xlarge'
+    - 'm4.10xlarge'
+    - 'm4.16xlarge'
+    - 'm5.large'
+    - 'm5.xlarge'
+    - 'm5.2xlarge'
+    - 'm5.4xlarge'
+    - 'm5.12xlarge'
+    - 'm5.24xlarge'
+    - 'p2.xlarge'
+    - 'p2.8xlarge'
+    - 'p2.16xlarge'
+    - 'p3.2xlarge'
+    - 'p3.8xlarge'
+    - 'p3.16xlarge'
+    - 'r3.large'
+    - 'r3.xlarge'
+    - 'r3.2xlarge'
+    - 'r3.4xlarge'
+    - 'r3.8xlarge'
+    - 'r4.large'
+    - 'r4.xlarge'
+    - 'r4.2xlarge'
+    - 'r4.4xlarge'
+    - 'r4.8xlarge'
+    - 'r4.16xlarge'
+    - 't1.micro'
+    - 't2.nano'
+    - 't2.micro'
+    - 't2.small'
+    - 't2.medium'
+    - 't2.large'
+    - 't2.xlarge'
+    - 't2.2xlarge'
+    - 'x1.16xlarge'
+    - 'x1.32xlarge'
+    - 'x1e.xlarge'
+    - 'x1e.2xlarge'
+    - 'x1e.4xlarge'
+    - 'x1e.8xlarge'
+    - 'x1e.16xlarge'
+    - 'x1e.32xlarge'
+  CPUUtilizationThreshold:
+    Description: 'The maximum percentage of CPU utilization.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+  CPUCreditBalanceThreshold:
+    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Type: Number
+    Default: 20
+    MinValue: 0
+Mappings:
+  InstanceTypeMap: # the numbers, at leats for t2 are not correct
+    'c4.large': {AverageNetwork: 39720000000}
+    'c4.xlarge': {AverageNetwork: 80220000000}
+    'c4.2xlarge': {AverageNetwork: 151260000000}
+    'c4.4xlarge': {AverageNetwork: 302220000000}
+    'c4.8xlarge': {AverageNetwork: 350400000000}
+    'c5.large': {AverageNetwork: 602700000000}
+    'c5.xlarge': {AverageNetwork: 602700000000}
+    'c5.2xlarge': {AverageNetwork: 602760000000}
+    'c5.4xlarge': {AverageNetwork: 603300000000}
+    'c5.9xlarge': {AverageNetwork: 602820000000}
+    'c5.18xlarge': {AverageNetwork: 1476660000000}
+    'd2.xlarge': {AverageNetwork: 80220000000}
+    'd2.2xlarge': {AverageNetwork: 151260000000}
+    'd2.4xlarge': {AverageNetwork: 302220000000}
+    'd2.8xlarge': {AverageNetwork: 552960000000}
+    'g3.4xlarge': {AverageNetwork: 605940000000}
+    'g3.8xlarge': {AverageNetwork: 606000000000}
+    'g3.16xlarge': {AverageNetwork: 1425300000000}
+    'h1.2xlarge': {AverageNetwork: 606000000000}
+    'h1.4xlarge': {AverageNetwork: 606000000000}
+    'h1.8xlarge': {AverageNetwork: 606000000000}
+    'h1.16xlarge': {AverageNetwork: 1428300000000}
+    'i3.large': {AverageNetwork: 596700000000}
+    'i3.xlarge': {AverageNetwork: 603180000000}
+    'i3.2xlarge': {AverageNetwork: 605880000000}
+    'i3.4xlarge': {AverageNetwork: 605880000000}
+    'i3.8xlarge': {AverageNetwork: 605940000000}
+    'i3.16xlarge': {AverageNetwork: 1413240000000}
+    'm3.medium': {AverageNetwork: 20100000000}
+    'm3.large': {AverageNetwork: 42540000000}
+    'm3.xlarge': {AverageNetwork: 61740000000}
+    'm3.2xlarge': {AverageNetwork: 61740000000}
+    'm4.large': {AverageNetwork: 29340000000}
+    'm4.xlarge': {AverageNetwork: 50460000000}
+    'm4.2xlarge': {AverageNetwork: 61980000000}
+    'm4.4xlarge': {AverageNetwork: 123960000000}
+    'm4.10xlarge': {AverageNetwork: 343500000000}
+    'm4.16xlarge': {AverageNetwork: 1434780000000}
+    'm5.large': {AverageNetwork: 602460000000}
+    'm5.xlarge': {AverageNetwork: 602700000000}
+    'm5.2xlarge': {AverageNetwork: 602820000000}
+    'm5.4xlarge': {AverageNetwork: 602820000000}
+    'm5.12xlarge': {AverageNetwork: 602820000000}
+    'm5.24xlarge': {AverageNetwork: 1475820000000}
+    'p2.xlarge': {AverageNetwork: 78720000000}
+    'p2.8xlarge': {AverageNetwork: 609900000000}
+    'p2.16xlarge': {AverageNetwork: 1403100000000}
+    'p3.2xlarge': {AverageNetwork: 605880000000}
+    'p3.8xlarge': {AverageNetwork: 605940000000}
+    'p3.16xlarge': {AverageNetwork: 1357140000000}
+    'r3.large': {AverageNetwork: 32340000000}
+    'r3.xlarge': {AverageNetwork: 47520000000}
+    'r3.2xlarge': {AverageNetwork: 61800000000}
+    'r3.4xlarge': {AverageNetwork: 123480000000}
+    'r3.8xlarge': {AverageNetwork: 338460000000}
+    'r4.large': {AverageNetwork: 586200000000}
+    'r4.xlarge': {AverageNetwork: 605520000000}
+    'r4.2xlarge': {AverageNetwork: 605880000000}
+    'r4.4xlarge': {AverageNetwork: 605940000000}
+    'r4.8xlarge': {AverageNetwork: 605940000000}
+    'r4.16xlarge': {AverageNetwork: 1425480000000}
+    't1.micro': {AverageNetwork: 5640000000}
+    't2.nano': {AverageNetwork: 29820000000}
+    't2.micro': {AverageNetwork: 59460000000}
+    't2.small': {AverageNetwork: 59520000000}
+    't2.medium': {AverageNetwork: 59760000000}
+    't2.large': {AverageNetwork: 60180000000}
+    't2.xlarge': {AverageNetwork: 60660000000}
+    't2.2xlarge': {AverageNetwork: 61140000000}
+    'x1.16xlarge': {AverageNetwork: 609960000000}
+    'x1.32xlarge': {AverageNetwork: 1236660000000}
+    'x1e.xlarge': {AverageNetwork: 605640000000}
+    'x1e.2xlarge': {AverageNetwork: 605880000000}
+    'x1e.4xlarge': {AverageNetwork: 605940000000}
+    'x1e.8xlarge': {AverageNetwork: 606000000000}
+    'x1e.16xlarge': {AverageNetwork: 605940000000}
+    'x1e.32xlarge': {AverageNetwork: 1245060000000}
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  CPUUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalanceTooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  NetworkInTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Number of bytes received over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: NetworkIn
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: !FindInMap [InstanceTypeMap, !Ref InstanceType, AverageNetwork]
+  NetworkOutTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Number of bytes sent out over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: NetworkOut
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: !FindInMap [InstanceTypeMap, !Ref InstanceType, AverageNetwork]
+  StatusCheckFailedAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 2
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-ec2'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
