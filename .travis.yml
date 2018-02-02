@@ -1,0 +1,15 @@
+---
+language: python
+env:
+  global:
+  - secure: "XvbFdggFHOAgOyWEIC72W2Ut00mcrEwuMrPl88I01fC5tKPAZwYGwACR7+vpcDgzbYr19ALiVQisNNmwzvdr/bzH1be6LPR5ab557QsduFxV3fEgaD+IioWJH4KNsu+LWU6dpBPDja919rtVNQ3+tYXjMPlTuK5xGNAzOVQHunWXLf/DiWgpPVI6Z8ZHMbeI1io4USebTVXAwOG8FVHsNmx/CvV6NVSN53uEJx5f5TOkJdufXwUZKcoj5134w4eBzMZDWxtcVW3cT7IiA8xht1CICGUaO3MyIBDk48/mWuq4a2/JvOGjte4P5/9fuCfc13YgvEjF2S6gtEbHO+HlyI5Pduq1G9YzWrlxUaMok9eoR/U/LDj3wXX3SD/85nZsC/6K4TaPVCe+C+8UyhdMSba/YfT0uJc3hO/IRJ/C9sp7L3IpkZuY1ul/q7CEx9jd5OnvoNWqjaIpRYEwdyO1Mj6HlvN48EHHIjwhuyCxu2b5oaqmB27VxojIQYrRqBaZDveqg+FA/8HV3B0gx8NJhsGZxjwibzu2xB/4Yx9NrzWFNA8FZD9F/hZw1vdc4t7Ic5yGjQlMmhZJ6/LrqBjyFeMaIs6IurEh66bWVmESNEb/2fGmUiPoQ4RKjwRZQgOBqT63Rkqnr15IcAuxHjGpcRGD3UifBIm0F6XD78y1kfg=" # AWS_ACCESS_KEY_ID="xyz"
+  - secure: "iRo36EIeY8LVTH5QeKsJJepjasey7moEiChC1wg/6eYmmZ6JqLdCkC+zllVZqmtRuQekV070kKQ6UasUyIpxIMH4eCbIz6J5qASZ6Rq+leVKFNpqqLLzyT3BLqxHJBNQ8WPOBfjp34QWVkr0CYD9sL4CZC4OtBWb2KRJr/1QfBk3NtPOzLAz7N13/VKMwU5HXfFEfY/FDR0DM/pypy+NoO3j6tCG7A5b/bESEGPrpPR39Y+StdNZkOLnW8578NMCTHMZjUQZdst8hfHvORDiwtby2AESSzOEicdbGu32fRD+TYAmbATc2luPHipFQ/3tMRRGKt4ZGMO8pn707XNS/a7M7TL86dKdNUmUKQcvF4iTBlLMiMAox3PQiRcu95hCwAzpIl1+9QzyW+mGovlPVZm6PGjLRMBwJovunPNUXElsGGFKPfqStZ2ptlpPbo1/JVhmk6ek5Kxxhkos14suzEyCPsNuQMY7RBuGOyPLzghHTNGxOCKm3QTftkd5AuAOzeL1jCxVIllmDAFtAnqHHKqxJQw2ectXN5U5/0zmFB1ocjkKxBzMT0Q3Za5OFdO7JFJ4ptooSl3LmI5hQUPehSaBtoo8Tq5sHossFfa43JTdWOtyjLYuEoW1cYp0W+B+gwftqjCZ0spoHfiLMx29ex6gmC58aXsh1u0chQbmEVY=" # AWS_SECRET_ACCESS_KEY="xyz"
+  - 'AWS_DEFAULT_REGION=us-east-1'
+python:
+- '2.7'
+install:
+- 'pip install yamllint'
+- 'pip install awscli'
+script:
+- 'yamllint .'
+- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then find . -type f -name ''*.y?ml'' | while read file; do aws cloudformation validate-template --template-body "file://$file" > /dev/null; done; fi'
