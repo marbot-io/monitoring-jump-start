@@ -1,0 +1,297 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: ElastiCache (memcached) cluster monitoring'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'ElastiCache'
+      Parameters:
+      - CacheClusterId
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - CPUUtilizationThreshold
+      - SwapUsageThreshold
+      - EvictionsThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  CacheClusterId:
+    Description: 'The cluster ID of the ElastiCache memcached cluster that you want to monitor.'
+    Type: String
+  CPUUtilizationThreshold:
+    Description: 'The maximum percentage of CPU utilization (all nodes are averaged).'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+  SwapUsageThreshold:
+    Description: 'The maximum amount of swap space used (all nodes are averaged) in Byte.'
+    Type: Number
+    Default: 256000000 # 256 Megabyte in Byte
+    MinValue: 0
+  EvictionsThreshold:
+    Description: 'The maximum number of keys evicted per minute because of missing memory (all nodes are summed).'
+    Type: Number
+    Default: 1000
+    MinValue: 0
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms, ElastiCache Notifications
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  CPUUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: CacheClusterId
+        Value: !Ref CacheClusterId
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/ElastiCache'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  SwapUsageTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average swap usage over last 10 minutes too high, performance may suffer (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: CacheClusterId
+        Value: !Ref CacheClusterId
+      EvaluationPeriods: 1
+      MetricName: SwapUsage
+      Namespace: 'AWS/ElastiCache'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref SwapUsageThreshold
+  EvictionsTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Evictions over last 10 minutes too high, memory may to less for all keys (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: CacheClusterId
+        Value: !Ref CacheClusterId
+      EvaluationPeriods: 10
+      MetricName: Evictions
+      Namespace: 'AWS/ElastiCache'
+      OKActions:
+      - !Ref Topic
+      Period: 60
+      Statistic: Sum
+      Threshold: !Ref EvictionsThreshold
+  ##########################################################################
+  #                                                                        #
+  #                            CUSTOM RESOURCES                            #
+  #                                                                        #
+  ##########################################################################
+  NotificationTopicConfiguration:
+    DependsOn: TopicEndpointSubscription
+    Type: 'Custom::NotificationTopicConfiguration'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt 'CustomNotificationTopicConfigurationFunction.Arn'
+      CacheClusterId: !Ref CacheClusterId
+      NotificationTopicArn: !Ref Topic
+  CustomNotificationTopicConfigurationFunction: # needs no monitoring because it is used as a custom resource
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          'use strict';
+          const response = require('cfn-response');
+          const AWS = require('aws-sdk');
+          const elasticache = new AWS.ElastiCache({apiVersion: '2015-02-02'});
+          exports.handler = (event, context, cb) => {
+            console.log(JSON.stringify(event));
+            const failed = (err) => {
+              console.log(JSON.stringify(err));
+              response.send(event, context, response.FAILED, {});
+            }
+            const success = (msg) => {
+              console.log(msg);
+              response.send(event, context, response.SUCCESS, {});
+            };
+            const successCB = (msg) => {
+              return () => {
+                success(msg);
+              }
+            };
+            const describe = (cacheClusterId, cb) => {
+              elasticache.describeCacheClusters({
+                CacheClusterId: cacheClusterId,
+              }, function(err, data) {
+                if (err) {
+                  failed(err);
+                } else {
+                  if (data.CacheClusters.length === 0) {
+                    failed(new Error('cache cluster does not exist!'));
+                  } else {
+                    const cluster = data.CacheClusters[0];
+                    console.log(JSON.stringify(cluster));
+                    cb(cluster);
+                  }
+                }
+              });
+            };
+            const modify = (cacheClusterId, notificationTopicArn, notificationTopicStatus, cb) => {
+              elasticache.modifyCacheCluster({
+                CacheClusterId: cacheClusterId,
+                ApplyImmediately: true,
+                NotificationTopicArn: notificationTopicArn,
+                NotificationTopicStatus: notificationTopicStatus
+              }, function(err, data) {
+                if (err) {
+                  failed(err);
+                } else {
+                  cb();
+                }
+              });
+            };
+            const create = (cacheClusterId, notificationTopicArn, cb) => {
+              describe(cacheClusterId, (cluster) => {
+                if ('NotificationConfiguration' in cluster
+                  && cluster.NotificationConfiguration.TopicStatus === 'active') {
+                  console.log('cache cluster already has an active notification configuration!');
+                  cb();
+                } else {
+                  modify(cacheClusterId, notificationTopicArn, 'active', cb);
+                }
+              });
+            };
+            const remove = (cacheClusterId, notificationTopicArn, cb) => {
+              describe(cacheClusterId, (cluster) => {
+                console.log(JSON.stringify(cluster));
+                if ('NotificationConfiguration' in cluster
+                  && cluster.NotificationConfiguration.TopicStatus === 'active'
+                  && cluster.NotificationConfiguration.TopicArn === notificationTopicArn) {
+                  modify(cacheClusterId, '', 'inactive', cb);
+                } else {
+                  console.log('cache cluster was not using the expected notification configuration!');
+                  cb();
+                }
+              });
+            };
+            if (event.RequestType === 'Create') {
+              create(event.ResourceProperties.CacheClusterId, event.ResourceProperties.NotificationTopicArn, successCB('done'));
+            } else if (event.RequestType === 'Update') {
+              if (event.OldResourceProperties.CacheClusterId !== event.ResourceProperties.CacheClusterId) {
+                remove(event.OldResourceProperties.CacheClusterId, event.OldResourceProperties.NotificationTopicArn, () => {
+                  create(event.ResourceProperties.CacheClusterId, event.ResourceProperties.NotificationTopicArn, successCB('done'));
+                });
+              } else {
+                describe(event.ResourceProperties.CacheClusterId, (cluster) => {
+                  if ('NotificationConfiguration' in cluster
+                    && cluster.NotificationConfiguration.TopicStatus === 'active'
+                    && cluster.NotificationConfiguration.TopicArn === event.OldResourceProperties.NotificationTopicArn) {
+                    modify(event.ResourceProperties.CacheClusterId, event.ResourceProperties.NotificationTopicArn, 'active', successCB('done'));
+                  } else {
+                    success('cache cluster was not using the expected notification configuration!');
+                  }
+                });
+              }
+            } else if (event.RequestType === 'Delete') {
+              remove(event.ResourceProperties.CacheClusterId, event.ResourceProperties.NotificationTopicArn, successCB('done'));
+            } else {
+              failed(new Error(`unsupported RequestType: ${event.RequestType}`));
+            }
+          };
+      Handler: 'index.handler'
+      MemorySize: 128
+      Role: !GetAtt 'CustomNotificationTopicConfigurationRole.Arn'
+      Runtime: 'nodejs6.10'
+      Timeout: 10
+  CustomNotificationTopicConfigurationRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+      - PolicyName: cloudwatch
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'elasticache:DescribeCacheClusters'
+            - 'elasticache:ModifyCacheCluster'
+            Resource: '*'
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-elasticache-memcached'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.1.0'

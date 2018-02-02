@@ -1,0 +1,645 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: AWS basic monitoring'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+      - Test
+    - Label:
+        default: 'Alarms'
+      Parameters:
+      - BillingThreshold
+      - TrustedAdvisor
+    - Label:
+        default: 'Subscriptions'
+      Parameters:
+      - AMIUpdateNotificationECSOptimized
+      - AMIUpdateNotificationAmazonLinux
+      - AMIUpdateNotificationAmazonLinux2
+    - Label:
+        default: 'Events'
+      Parameters:
+      - RootUserLogin
+      - BatchFailed
+      - CodePipelineFailed
+      - CodeBuildFailed
+      - CodeDeployFailed
+      - HealthIssue
+      - AutoScalingFailed
+      - GuardDutyFinding
+      - EMRFailed
+      - RDSIssue
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  Test:
+    Description: 'Send a single test alert.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  BillingThreshold:
+    Description: 'Receive an alert, if your monthly AWS costs (in USD) are higher than this value (leave blank to disable, works in us-east-1 only).'
+    Type: String
+    Default: 10
+    AllowedPattern: '^[0-9]*$'
+  AMIUpdateNotificationECSOptimized:
+    Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only, requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  AMIUpdateNotificationAmazonLinux:
+    Description: 'Receive an alert, if a new Amazon Linux AMI is released (works in us-east-1 only, requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  AMIUpdateNotificationAmazonLinux2:
+    Description: 'Receive an alert, if a new Amazon Linux 2 AMI is released (works in us-east-1 only, requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  RootUserLogin:
+    Description: 'Receive an alert, if a root user login is performed (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  BatchFailed:
+    Description: 'Receive an alert, if a Batch job fails (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodePipelineFailed:
+    Description: 'Receive an alert, if a CodePipeline execution fails (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodeBuildFailed:
+    Description: 'Receive an alert, if a CodeBuild build fails (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodeDeployFailed:
+    Description: 'Receive an alert, if a CodeDeploy deployment fails (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  HealthIssue:
+    Description: 'Receive an alert, if AWS is experiencing events that may impact you (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  TrustedAdvisor:
+    Description: 'Receive an alert, if Trusted Advisor checks turn red (works in us-east-1 only, requires AWS Business Support or higher).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  AutoScalingFailed:
+    Description: 'Receive an alert, if an EC2 instance fails to start or terminate in an Auto Scaling Group (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  GuardDutyFinding:
+    Description: 'Receive an alert, if a GuardDuty finding is created (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  EMRFailed:
+    Description: 'Receive an alert, if an EMR step or auto scaling policy fails (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  RDSIssue:
+    Description: 'Receive an alert, if an RDS issue is detected (requires marbot plus).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+Conditions:
+  NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
+  TestEnabled: !Equals [!Ref Test, 'true']
+  # Only available in us-east-1
+  BillingEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BillingThreshold, '']]]
+  AMIUpdateNotificationECSOptimizedEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationECSOptimized, 'true']]
+  AMIUpdateNotificationAmazonLinuxEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux, 'true']]
+  AMIUpdateNotificationAmazonLinux2Enabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux2, 'true']]
+  TrustedAdvisorEnabled: !And [!Condition NorthVirginia, !Equals [!Ref TrustedAdvisor, 'true']]
+  # Needs to be created in each region
+  RootUserLoginEnabled: !Equals [!Ref RootUserLogin, 'true']
+  BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
+  CodePipelineFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
+  CodeBuildFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
+  CodeDeployFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
+  HealthIssueEnabled: !Equals [!Ref HealthIssue, 'true']
+  AutoScalingFailedEnabled: !Equals [!Ref AutoScalingFailed, 'true']
+  GuardDutyFindingEnabled: !Equals [!Ref GuardDutyFinding, 'true']
+  EMRFailedEnabled: !Equals [!Ref EMRFailed, 'true']
+  RDSIssueEnabled: !Equals [!Ref RDSIssue, 'true']
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            Service:
+            - 'events.amazonaws.com' # Allow CloudWatch Events
+            - 'budgets.amazonaws.com' # Allow Budget Notifications
+            - 'rds.amazonaws.com' # Allow RDS Events
+            - 's3.amazonaws.com' # Allow S3 Event Notifications
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+        - Sid: Sid2
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms, ElastiCache Notifications, Elastic Beanstalk Notifications, Auto Scaling Notification
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+        - Sid: Sid3
+          Effect: Allow
+          Principal:
+            Service: 'ses.amazonaws.com' # Allow SES Notifications & Events
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:Referer': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  BillingAlarm:
+    Condition: BillingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Your monthly AWS costs are higher than expected (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: Currency
+        Value: USD
+      EvaluationPeriods: 1
+      MetricName: EstimatedCharges
+      Namespace: 'AWS/Billing'
+      OKActions:
+      - !Ref Topic
+      Period: 21600
+      Statistic: Maximum
+      Threshold: !Ref BillingThreshold
+  TrustedAdvisorCostOptimizationAlarm:
+    Condition: TrustedAdvisorEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Trusted Advisor Cost Optimization checks are red (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: Category
+        Value: 'Cost Optimization'
+      EvaluationPeriods: 1
+      MetricName: RedChecks
+      Namespace: 'AWS/TrustedAdvisor'
+      OKActions:
+      - !Ref Topic
+      Period: 21600
+      Statistic: Maximum
+      Threshold: 0
+  TrustedAdvisorFaultToleranceAlarm:
+    Condition: TrustedAdvisorEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Trusted Advisor Fault Tolerance checks are red (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: Category
+        Value: 'Fault Tolerance'
+      EvaluationPeriods: 1
+      MetricName: RedChecks
+      Namespace: 'AWS/TrustedAdvisor'
+      OKActions:
+      - !Ref Topic
+      Period: 21600
+      Statistic: Maximum
+      Threshold: 0
+  TrustedAdvisorPerformanceAlarm:
+    Condition: TrustedAdvisorEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Trusted Advisor Performance checks are red (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: Category
+        Value: 'Performance'
+      EvaluationPeriods: 1
+      MetricName: RedChecks
+      Namespace: 'AWS/TrustedAdvisor'
+      OKActions:
+      - !Ref Topic
+      Period: 21600
+      Statistic: Maximum
+      Threshold: 0
+  TrustedAdvisorSecurityAlarm:
+    Condition: TrustedAdvisorEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Trusted Advisor Security checks are red (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: Category
+        Value: 'Security'
+      EvaluationPeriods: 1
+      MetricName: RedChecks
+      Namespace: 'AWS/TrustedAdvisor'
+      OKActions:
+      - !Ref Topic
+      Period: 21600
+      Statistic: Maximum
+      Threshold: 0
+  TrustedAdvisorServiceLimitsAlarm:
+    Condition: TrustedAdvisorEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Trusted Advisor Service Limits checks are red (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: Category
+        Value: 'Service Limits'
+      EvaluationPeriods: 1
+      MetricName: RedChecks
+      Namespace: 'AWS/TrustedAdvisor'
+      OKActions:
+      - !Ref Topic
+      Period: 21600
+      Statistic: Maximum
+      Threshold: 0
+  ##########################################################################
+  #                                                                        #
+  #                              SUBSCRIPTIONS                             #
+  #                                                                        #
+  ##########################################################################
+  AMIUpdateNotificationECSOptimizedSubscription:
+    Condition: AMIUpdateNotificationECSOptimizedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: 'arn:aws:sns:us-east-1:177427601217:ecs-optimized-amazon-ami-update'
+  AMIUpdateNotificationAmazonLinuxSubscription:
+    Condition: AMIUpdateNotificationAmazonLinuxEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-ami-updates'
+  AMIUpdateNotificationAmazonLinux2Subscription:
+    Condition: AMIUpdateNotificationAmazonLinux2Enabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-2-ami-updates'
+  ##########################################################################
+  #                                                                        #
+  #                                 EVENTS                                 #
+  #                                                                        #
+  ##########################################################################
+  RootUserLoginEvent:
+    Condition: RootUserLoginEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A root user login was detected, better use IAM users instead (created by marbot).'
+      EventPattern:
+        'detail-type':
+        - 'AWS Console Sign In via CloudTrail'
+        detail:
+          userIdentity:
+            arn:
+            - !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  BatchFailedEvent:
+    Condition: BatchFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A Batch job failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.batch'
+        'detail-type':
+        - 'Batch Job State Change'
+        detail:
+          status:
+          - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  CodePipelineFailedEvent:
+    Condition: CodePipelineFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CodePipeline execution failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.codepipeline'
+        'detail-type':
+        - 'CodePipeline Pipeline Execution State Change'
+        detail:
+          state:
+          - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  CodeBuildFailedEvent:
+    Condition: CodeBuildFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CodeBuild build failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.codebuild'
+        'detail-type':
+        - 'CodeBuild Build State Change'
+        detail:
+          'build-status':
+          - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  CodeDeployFailedEvent:
+    Condition: CodeDeployFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CodeDeploy deployment or instance failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.codedeploy'
+        'detail-type':
+        - 'CodeDeploy Deployment State-change Notification'
+        - 'CodeDeploy Instance State-change Notification'
+        detail:
+          state:
+          - FAILURE
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  HealthIssueEvent:
+    Condition: HealthIssueEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'AWS is experiencing events that may impact you (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.health'
+        'detail-type':
+        - 'AWS Health Event'
+        detail:
+          'eventTypeCategory':
+          - issue
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  AutoScalingFailedEvent:
+    Condition: AutoScalingFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'EC2 Instances controlled by an Auto Scaling Group failed to launch or terminate (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.autoscaling'
+        'detail-type':
+        - 'EC2 Instance Launch Unsuccessful'
+        - 'EC2 Instance Terminate Unsuccessful'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  GuardDutyFindingEvent:
+    Condition: GuardDutyFindingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Events (e.g., findings) from AWS GuardDuty (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.guardduty'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  EMRFailedEvent:
+    Condition: EMRFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'EMR step or auto scaling policy failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.emr'
+        'detail-type':
+        - 'EMR Auto Scaling Policy State Change'
+        - 'EMR Step Status Change'
+        detail:
+          state:
+          - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  RDSInstanceIssue:
+    Condition: RDSIssueEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::RDS::EventSubscription'
+    Properties:
+      EventCategories:
+      - failover
+      - failure
+      - 'low storage'
+      - maintenance
+      - notification
+      - recovery
+      SnsTopicArn: !Ref Topic
+      SourceType: 'db-instance'
+  RDSClusterIssue:
+    Condition: RDSIssueEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::RDS::EventSubscription'
+    Properties:
+      EventCategories:
+      - failover
+      - failure
+      - notification
+      SnsTopicArn: !Ref Topic
+      SourceType: 'db-cluster'
+  ##########################################################################
+  #                                                                        #
+  #                            CUSTOM RESOURCES                            #
+  #                                                                        #
+  ##########################################################################
+  # TODO Custom Resource for Budget http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/Budgets.html
+  ##########################################################################
+  #                                                                        #
+  #                                  TEST                                  #
+  #                                                                        #
+  ##########################################################################
+  TestAlarm:
+    Condition: TestEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'This alarm is used to test marbot (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      MetricName: test
+      Namespace: marbot
+      Period: 60
+      Statistic: Maximum
+      Threshold: 1
+  TestAlarmState:
+    Condition: TestEnabled
+    Type: 'Custom::AlarmState'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !GetAtt 'CustomAlarmStateFunction.Arn'
+      AlarmName: !Ref TestAlarm
+  CustomAlarmStateFunction: # needs no monitoring because it is used as a custom resource
+    Condition: TestEnabled
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile:
+          !Sub |
+            'use strict';
+            const response = require('cfn-response');
+            const AWS = require('aws-sdk');
+            const cloudwatch = new AWS.CloudWatch({apiVersion: '2010-08-01'});
+            exports.handler = (event, context, cb) => {
+              console.log(JSON.stringify(event));
+              if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+                cloudwatch.setAlarmState({
+                  AlarmName: event.ResourceProperties.AlarmName,
+                  StateValue: 'ALARM',
+                  StateReason: 'This is a test alert.'
+                }, function(err, data) {
+                  if (err) {
+                    console.log(JSON.stringify(err));
+                    response.send(event, context, response.FAILED, {});
+                  } else {
+                    response.send(event, context, response.SUCCESS, {});
+                  }
+                });
+              } else {
+                response.send(event, context, response.SUCCESS, {});
+              }
+            };
+      Handler: 'index.handler'
+      MemorySize: 128
+      Role: !GetAtt 'CustomAlarmStateRole.Arn'
+      Runtime: 'nodejs6.10'
+      Timeout: 10
+  CustomAlarmStateRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
+      Policies:
+      - PolicyName: cloudwatch
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'cloudwatch:SetAlarmState'
+            Resource: '*'
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.3.0'
+  TopicName:
+    Description: 'The name of the SNS topic.'
+    Value: !GetAtt 'Topic.TopicName'
+    Export:
+      Name: !Sub '${AWS::StackName}-TopicName'
+  TopicArn:
+    Description: 'The ARN of the SNS topic.'
+    Value: !Ref Topic
+    Export:
+      Name: !Sub '${AWS::StackName}-TopicArn'
