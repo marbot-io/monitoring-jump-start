@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: RDS database instance monitoring'
+Description: 'marbot.io: RDS database instance monitoring (https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:

@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: Elasticsearch domain monitoring'
+Description: 'marbot.io: Elasticsearch domain monitoring (https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -17,7 +17,9 @@ Metadata:
         default: 'Thresholds'
       Parameters:
       - CPUUtilizationThreshold
+      - CPUCreditBalanceThreshold
       - MasterCPUUtilizationThreshold
+      - MasterCPUCreditBalanceThreshold
       - FreeStorageSpaceThreshold
       - JVMMemoryPressureThreshold
       - MasterJVMMemoryPressureThreshold
@@ -39,12 +41,22 @@ Parameters:
     Default: 80
     MinValue: 0
     MaxValue: 100
+  CPUCreditBalanceThreshold:
+    Description: 'The minimum number of CPU credits used for data nodes in the cluster (t2 instances only).'
+    Type: Number
+    Default: 20
+    MinValue: 0
   MasterCPUUtilizationThreshold:
     Description: 'The maximum percentage of CPU resources used for master nodes in the cluster.'
     Type: Number
     Default: 50
     MinValue: 0
     MaxValue: 100
+  MasterCPUCreditBalanceThreshold:
+    Description: 'The minimum number of CPU credits used for master nodes in the cluster (t2 instances only).'
+    Type: Number
+    Default: 20
+    MinValue: 0
   FreeStorageSpaceThreshold:
     Description: 'The minimum amount of available storage space in the cluster in Megabyte.'
     Type: Number
@@ -158,6 +170,27 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalanceTooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
   MasterCPUUtilizationTooHighAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
@@ -177,6 +210,27 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref MasterCPUUtilizationThreshold
+  MasterCPUCreditBalanceTooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: MasterCPUCreditBalance
+      Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref MasterCPUCreditBalanceThreshold
   FreeStorageSpaceTooLowAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
