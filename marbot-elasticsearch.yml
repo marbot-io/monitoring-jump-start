@@ -338,4 +338,4 @@ Outputs:
     Value: 'marbot-elasticsearch'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.0.0'
+    Value: '1.1.0'
