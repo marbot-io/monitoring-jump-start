@@ -1,0 +1,341 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: Elasticsearch domain monitoring'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'Elasticsearch'
+      Parameters:
+      - DomainName
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - CPUUtilizationThreshold
+      - MasterCPUUtilizationThreshold
+      - FreeStorageSpaceThreshold
+      - JVMMemoryPressureThreshold
+      - MasterJVMMemoryPressureThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  DomainName:
+    Description: 'The domain name of the Elasticsearch domain that you want to monitor.'
+    Type: String
+  CPUUtilizationThreshold:
+    Description: 'The maximum percentage of CPU resources used for data nodes in the cluster.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+  MasterCPUUtilizationThreshold:
+    Description: 'The maximum percentage of CPU resources used for master nodes in the cluster.'
+    Type: Number
+    Default: 50
+    MinValue: 0
+    MaxValue: 100
+  FreeStorageSpaceThreshold:
+    Description: 'The minimum amount of available storage space in the cluster in Megabyte.'
+    Type: Number
+    Default: 2000 # 2 Gigabyte in Megabyte
+    MinValue: 0
+  JVMMemoryPressureThreshold:
+    Description: 'The maximum percentage of the Java heap used for all data nodes in the cluster.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+  MasterJVMMemoryPressureThreshold:
+    Description: 'The maximum percentage of the Java heap used for all master nodes in the cluster.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  StatusYellowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Replica shards for at least one index are not allocated to nodes in a cluster (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'ClusterStatus.yellow'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Maximum
+      Threshold: 0
+  StatusRedAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Primary and replica shards of at least one index are not allocated to nodes in a cluster (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'ClusterStatus.red'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Maximum
+      Threshold: 0
+  CPUUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'CPUUtilization'
+      Namespace: 'AWS/ES'
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  MasterCPUUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'MasterCPUUtilization'
+      Namespace: 'AWS/ES'
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref MasterCPUUtilizationThreshold
+  FreeStorageSpaceTooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Cluster is running out of storage space (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'FreeStorageSpace'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Minimum
+      Threshold: !Ref FreeStorageSpaceThreshold
+  IndexWritesBlockedTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Cluster is blocking incoming write requests (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'ClusterIndexWritesBlocked'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Maximum
+      Threshold: 0
+  JVMMemoryPressureTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average JVM memory pressure over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'JVMMemoryPressure'
+      Namespace: 'AWS/ES'
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref JVMMemoryPressureThreshold
+  MasterJVMMemoryPressureTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average JVM memory pressure over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'MasterJVMMemoryPressure'
+      Namespace: 'AWS/ES'
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref MasterJVMMemoryPressureThreshold
+  AutomatedSnapshotFailureTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'No automated snapshot was taken for the domain in the previous 36 hours (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'AutomatedSnapshotFailure'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Maximum
+      Threshold: 0
+  KibanaHealthyNodesTooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Kibana is inaccessible (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'KibanaHealthyNodes'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Minimum
+      Threshold: 1
+  KMSKeyErrorAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'KMS customer master key used to encrypt data at rest has been disabled (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'KMSKeyError'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Maximum
+      Threshold: 0
+  KMSKeyInaccessibleAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'KMS customer master key used to encrypt data at rest has been deleted or revoked its grants to Amazon ES (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: ClientId
+        Value: !Ref 'AWS::AccountId'
+      - Name: DomainName
+        Value: !Ref DomainName
+      EvaluationPeriods: 1
+      MetricName: 'KMSKeyInaccessible'
+      Namespace: 'AWS/ES'
+      Period: 60
+      Statistic: Maximum
+      Threshold: 0
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-elasticsearch'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
