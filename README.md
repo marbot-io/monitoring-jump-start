@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/marbot-io/monitoring-jump-start.svg?branch=master)](https://travis-ci.org/marbot-io/monitoring-jump-start)
+
 # Free Monitoring Templates for AWS CloudFormation
 
 
