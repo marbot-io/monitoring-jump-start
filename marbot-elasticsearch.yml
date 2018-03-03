@@ -129,6 +129,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'ClusterStatus.yellow'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Maximum
       Threshold: 0
@@ -148,6 +150,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'ClusterStatus.red'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Maximum
       Threshold: 0
@@ -167,6 +171,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'CPUUtilization'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
@@ -207,6 +213,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'MasterCPUUtilization'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 600
       Statistic: Average
       Threshold: !Ref MasterCPUUtilizationThreshold
@@ -247,6 +255,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'FreeStorageSpace'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Minimum
       Threshold: !Ref FreeStorageSpaceThreshold
@@ -266,6 +276,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'ClusterIndexWritesBlocked'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Maximum
       Threshold: 0
@@ -285,6 +297,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'JVMMemoryPressure'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 600
       Statistic: Average
       Threshold: !Ref JVMMemoryPressureThreshold
@@ -304,6 +318,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'MasterJVMMemoryPressure'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 600
       Statistic: Average
       Threshold: !Ref MasterJVMMemoryPressureThreshold
@@ -323,6 +339,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'AutomatedSnapshotFailure'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Maximum
       Threshold: 0
@@ -342,6 +360,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'KibanaHealthyNodes'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Minimum
       Threshold: 1
@@ -361,6 +381,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'KMSKeyError'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Maximum
       Threshold: 0
@@ -380,6 +402,8 @@ Resources:
       EvaluationPeriods: 1
       MetricName: 'KMSKeyInaccessible'
       Namespace: 'AWS/ES'
+      OKActions:
+      - !Ref Topic
       Period: 60
       Statistic: Maximum
       Threshold: 0
