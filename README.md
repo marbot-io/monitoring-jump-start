@@ -7,12 +7,12 @@ Jump Starts are CloudFormation templates that you can deploy to your AWS account
 
 At the moment, you can monitor:
 
-* [Auto Scaling Group](marbot-auto-scaling-group.yml)
-* [EC2 instance](marbot-ec2-instance.yml)
-* [ElastiCache memcached cluster](marbot-elasticache-memcached.yml)
-* [Elasticsearch domain](marbot-elasticsearch.yml)
-* [RDS database instance](marbot-rds.yml)
-* [AWS basics](marbot.yml)
+* [AWS basics](marbot.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot.yml)
+* [Auto Scaling Group](marbot-auto-scaling-group.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-auto-scaling-group.yml)
+* [EC2 instance](marbot-ec2-instance.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instance.yml)
+* [ElastiCache memcached cluster](marbot-elasticache-memcached.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-elasticache-memcached.yml)
+* [Elasticsearch domain](marbot-elasticsearch.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-elasticsearch.yml)
+* [RDS database instance](marbot-rds.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-rds.yml)
 
 ## License
 All templates are published under Apache License Version 2.0.
