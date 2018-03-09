@@ -13,4 +13,4 @@ install:
 script:
 - 'yamllint .'
 - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then find . -type f -name ''*.y?ml'' | while read file; do aws cloudformation validate-template --template-body "file://$file" > /dev/null; done; fi'
-- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then aws s3 sync . s3://monitoring-jump-start --exclude ''*'' --include ''*.yml'' done; fi'
+- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then aws s3 sync . s3://monitoring-jump-start --exclude ''*'' --include ''*.yml''; fi'
