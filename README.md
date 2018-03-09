@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/marbot-io/monitoring-jump-start.svg?branch=master)](https://travis-ci.org/marbot-io/monitoring-jump-start)
+
 # Free Monitoring Templates for AWS CloudFormation
 
 Monitoring Jump Starts address one need: Setting up monitoring on AWS is hard. There are countless monitoring possibilities on AWS. Overlooking the important settings is easy. Monitoring Jump Starts connect you with all relevant AWS sources for comprehensive monitoring coverage.
