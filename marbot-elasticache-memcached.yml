@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: ElastiCache (memcached) cluster monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Description: 'marbot.io: ElastiCache memcached cluster monitoring (https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
