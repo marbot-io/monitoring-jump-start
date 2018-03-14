@@ -1,6 +1,6 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: Elastic Beanstalk monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Description: 'marbot.io: Elastic Beanstalk monitoring (don't forget to put the https://github.com/marbot-io/monitoring-jump-start/blob/master/marbot-elastic-beanstalk.config file into your .ebextensions folder; https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -48,7 +48,7 @@ Resources:
         - Sid: Sid1
           Effect: Allow
           Principal:
-            AWS: '*' # Allow CloudWatch Alarms, ElastiCache Notifications
+            AWS: '*' # Allow Elastic Beanstalk Notifications
           Action: 'sns:Publish'
           Resource: !Ref Topic
           Condition:
