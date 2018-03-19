@@ -28,7 +28,7 @@ Parameters:
     AllowedValues: [v1, dev]
   FileSystemId:
     Description: 'The EFS file system ID that you want to monitor.'
-    Type: 'AWS::EC2::Instance::Id'
+    Type: String
   BurstCreditBalanceThreshold:
     Description: 'The minimum number of burst credits that a file system should have.'
     Type: Number
