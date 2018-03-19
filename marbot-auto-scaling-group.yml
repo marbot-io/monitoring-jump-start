@@ -124,7 +124,7 @@ Outputs:
     Value: !Sub '${AWS::StackName}'
   StackTemplate:
     Description: 'Stack template.'
-    Value: 'marbot-ec2'
+    Value: 'marbot-auto-scaling-group'
   StackVersion:
     Description: 'Stack version.'
     Value: '1.0.0'
