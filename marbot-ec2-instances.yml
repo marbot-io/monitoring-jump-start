@@ -1,0 +1,733 @@
+---
+# Copyright 2018 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: EC2 instances (up to ten) monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'EC2'
+      Parameters:
+      - InstanceIds
+      - NumberOfInstanceIds
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - CPUUtilizationThreshold
+      - CPUCreditBalanceThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  InstanceIds:
+    Description: 'The instance IDs of up to ten EC2 instances that you want to monitor.'
+    Type: 'List<AWS::EC2::Instance::Id>'
+  NumberOfInstanceIds:
+    Description: 'The number of InstanceIds you entered (needs to be provided because CloudFormation can not count).'
+    Type: 'Number'
+    Default: 1
+    MinValue: 1
+    MaxValue: 10
+  CPUUtilizationThreshold:
+    Description: 'The maximum percentage of CPU utilization.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+  CPUCreditBalanceThreshold:
+    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Type: Number
+    Default: 20
+    MinValue: 0
+Conditions:
+  Has1: !Equals [!Ref NumberOfInstanceIds, 1]
+  Has2: !Equals [!Ref NumberOfInstanceIds, 2]
+  Has3: !Equals [!Ref NumberOfInstanceIds, 3]
+  Has4: !Equals [!Ref NumberOfInstanceIds, 4]
+  Has5: !Equals [!Ref NumberOfInstanceIds, 5]
+  Has6: !Equals [!Ref NumberOfInstanceIds, 6]
+  Has7: !Equals [!Ref NumberOfInstanceIds, 7]
+  Has8: !Equals [!Ref NumberOfInstanceIds, 8]
+  Has9: !Equals [!Ref NumberOfInstanceIds, 9]
+  Has10: !Equals [!Ref NumberOfInstanceIds, 10]
+  HasInstance0Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7, !Condition Has6, !Condition Has5, !Condition Has4, !Condition Has3, !Condition Has2, !Condition Has1]
+  HasInstance1Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7, !Condition Has6, !Condition Has5, !Condition Has4, !Condition Has3, !Condition Has2]
+  HasInstance2Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7, !Condition Has6, !Condition Has5, !Condition Has4, !Condition Has3]
+  HasInstance3Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7, !Condition Has6, !Condition Has5, !Condition Has4]
+  HasInstance4Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7, !Condition Has6, !Condition Has5]
+  HasInstance5Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7, !Condition Has6]
+  HasInstance6Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8, !Condition Has7]
+  HasInstance7Id: !Or [!Condition Has10, !Condition Has9, !Condition Has8]
+  HasInstance8Id: !Or [!Condition Has10, !Condition Has9]
+  HasInstance9Id: !Condition Has10
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  CPUUtilization0TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance0Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [0, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance0TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance0Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [0, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed0Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance0Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [0, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization1TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance1Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [1, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance1TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance1Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [1, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed1Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance1Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [1, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization2TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance2Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [2, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance2TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance2Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [2, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed2Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance2Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [2, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization3TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance3Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [3, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance3TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance3Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [3, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed3Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance3Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [3, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization4TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance4Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [4, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance4TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance4Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [4, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed4Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance4Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [4, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization5TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance5Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [5, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance5TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance5Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [5, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed5Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance5Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [5, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization6TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance6Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [6, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance6TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance6Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [6, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed6Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance6Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [6, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization7TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance7Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [7, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance7TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance7Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [7, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed7Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance7Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [7, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization8TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance8Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [8, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance8TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance8Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [8, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed8Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance8Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [8, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+  CPUUtilization9TooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance9Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [9, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+  CPUCreditBalance9TooLowAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance9Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [9, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+  StatusCheckFailed9Alarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasInstance9Id
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Select [9, !Ref InstanceIds]
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-ec2-instances'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
