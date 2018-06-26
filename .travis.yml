@@ -13,7 +13,7 @@ install:
 - 'pip install cfn-lint'
 script:
 - 'yamllint .'
-- 'find . -type f \( -name ''*.yml'' -o -name ''.yaml'' \) -a ! -name ''.*'' | while read file; do set -ex && cfn-lint --template "$file"; done;'
-- 'find . -type f \( -name ''*.yml'' -o -name ''.yaml'' \) -a ! -name ''.*'' | while read file; do set -ex && grep -q "LICENSE-2.0" "$file"; done;'
-- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then find . -type f \( -name ''*.yml'' -o -name ''.yaml'' \) -a ! -name ''.*'' | while read file; do set -ex && aws cloudformation validate-template --template-body "file://$file" > /dev/null; done; fi'
+- 'find . -type f \( -name ''*.yml'' -o -name ''*.yaml'' \) -a ! -name ''.*'' | while read file; do set -ex && cfn-lint --template "$file"; done;'
+- 'find . -type f \( -name ''*.yml'' -o -name ''*.yaml'' \) -a ! -name ''.*'' | while read file; do set -ex && grep -q "LICENSE-2.0" "$file"; done;'
+- 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then find . -type f \( -name ''*.yml'' -o -name ''*.yaml'' \) -a ! -name ''.*'' | while read file; do set -ex && aws cloudformation validate-template --template-body "file://$file" > /dev/null; done; fi'
 - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then aws s3 sync . s3://monitoring-jump-start --exclude ''*'' --include ''*.yml''; fi'
