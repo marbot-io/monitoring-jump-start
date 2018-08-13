@@ -415,7 +415,7 @@ Resources:
           IncludeRecurring: false
           UseAmortized: false
           IncludeRefund: false
-        BudgetType: COST  
+        BudgetType: COST
   ##########################################################################
   #                                                                        #
   #                                 EVENTS                                 #
