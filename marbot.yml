@@ -27,6 +27,7 @@ Metadata:
         default: 'Alarms'
       Parameters:
       - BillingThreshold
+      - BudgetThreshold
       - TrustedAdvisor
     - Label:
         default: 'Subscriptions'
@@ -59,12 +60,17 @@ Parameters:
   Test:
     Description: 'Send a single test alert.'
     Type: String
-    Default: true
-    AllowedValues: [true, false]
+    Default: 'true'
+    AllowedValues: ['true', 'false']
   BillingThreshold:
+    Description: 'Deprecated, use BudgetThreshold instead! Receive an alert, if your monthly AWS costs (in USD) are higher than this value (leave blank to disable, works in us-east-1 only).'
+    Type: String
+    Default: ''
+    AllowedPattern: '^[0-9]*$'
+  BudgetThreshold:
     Description: 'Receive an alert, if your monthly AWS costs (in USD) are higher than this value (leave blank to disable, works in us-east-1 only).'
     Type: String
-    Default: 10
+    Default: '10'
     AllowedPattern: '^[0-9]*$'
   AMIUpdateNotificationECSOptimized:
     Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only, requires marbot plus).'
@@ -141,6 +147,7 @@ Conditions:
   TestEnabled: !Equals [!Ref Test, 'true']
   # Only available in us-east-1
   BillingEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BillingThreshold, '']]]
+  BudgetEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BudgetThreshold, '']]]
   AMIUpdateNotificationECSOptimizedEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationECSOptimized, 'true']]
   AMIUpdateNotificationAmazonLinuxEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux, 'true']]
   AMIUpdateNotificationAmazonLinux2Enabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux2, 'true']]
@@ -363,6 +370,52 @@ Resources:
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-2-ami-updates'
+  ##########################################################################
+  #                                                                        #
+  #                                 BUDGET                                 #
+  #                                                                        #
+  ##########################################################################
+  Budget:
+    Condition: BudgetEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'GREATER_THAN'
+          NotificationType: ACTUAL
+          Threshold: 100
+          ThresholdType: PERCENTAGE
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'GREATER_THAN'
+          NotificationType: FORECASTED
+          Threshold: 100
+          ThresholdType: PERCENTAGE
+      Budget:
+        BudgetLimit:
+          Amount: !Ref BudgetThreshold
+          Unit: USD
+        TimeUnit: MONTHLY
+        CostFilters:
+          LinkedAccount: [!Ref 'AWS::AccountId']
+        CostTypes:
+          IncludeSupport: false
+          IncludeOtherSubscription: false
+          IncludeTax: false
+          IncludeSubscription: true
+          IncludeUpfront: false
+          IncludeDiscount: true
+          IncludeCredit: false
+          IncludeRecurring: false
+          UseAmortized: false
+          IncludeRefund: false
+        BudgetType: COST  
   ##########################################################################
   #                                                                        #
   #                                 EVENTS                                 #
@@ -612,6 +665,7 @@ Resources:
       Runtime: 'nodejs6.10'
       Timeout: 10
   CustomAlarmStateRole:
+    Condition: TestEnabled
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -639,7 +693,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.3.1'
+    Value: '1.4.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
