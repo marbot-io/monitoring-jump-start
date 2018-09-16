@@ -670,31 +670,30 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Code:
-        ZipFile:
-          !Sub |
-            'use strict';
-            const response = require('cfn-response');
-            const AWS = require('aws-sdk');
-            const cloudwatch = new AWS.CloudWatch({apiVersion: '2010-08-01'});
-            exports.handler = (event, context, cb) => {
-              console.log(JSON.stringify(event));
-              if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-                cloudwatch.setAlarmState({
-                  AlarmName: event.ResourceProperties.AlarmName,
-                  StateValue: 'ALARM',
-                  StateReason: 'This is a test alert.'
-                }, function(err, data) {
-                  if (err) {
-                    console.log(JSON.stringify(err));
-                    response.send(event, context, response.FAILED, {});
-                  } else {
-                    response.send(event, context, response.SUCCESS, {});
-                  }
-                });
-              } else {
-                response.send(event, context, response.SUCCESS, {});
-              }
-            };
+        ZipFile: |
+          'use strict';
+          const response = require('cfn-response');
+          const AWS = require('aws-sdk');
+          const cloudwatch = new AWS.CloudWatch({apiVersion: '2010-08-01'});
+          exports.handler = (event, context, cb) => {
+            console.log(JSON.stringify(event));
+            if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+              cloudwatch.setAlarmState({
+                AlarmName: event.ResourceProperties.AlarmName,
+                StateValue: 'ALARM',
+                StateReason: 'This is a test alert.'
+              }, function(err, data) {
+                if (err) {
+                  console.log(JSON.stringify(err));
+                  response.send(event, context, response.FAILED, {});
+                } else {
+                  response.send(event, context, response.SUCCESS, {});
+                }
+              });
+            } else {
+              response.send(event, context, response.SUCCESS, {});
+            }
+          };
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'CustomAlarmStateRole.Arn'
