@@ -642,64 +642,72 @@ Resources:
   #                                                                        #
   #                                  TEST                                  #
   #                                                                        #
-  ##########################################################################
-  TestAlarm:
+  ##########################################################################3
+  TestAlert:
     Condition: TestEnabled
-    DependsOn: TopicEndpointSubscription
-    Type: 'AWS::CloudWatch::Alarm'
-    Properties:
-      AlarmActions:
-      - !Ref Topic
-      AlarmDescription: 'This alarm is used to test marbot (created by marbot).'
-      ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
-      MetricName: test
-      Namespace: marbot
-      Period: 60
-      Statistic: Maximum
-      Threshold: 1
-  TestAlarmState:
-    Condition: TestEnabled
-    Type: 'Custom::AlarmState'
+    Type: 'Custom::Test'
     Version: '1.0'
     Properties:
-      ServiceToken: !GetAtt 'CustomAlarmStateFunction.Arn'
-      AlarmName: !Ref TestAlarm
-  CustomAlarmStateFunction: # needs no monitoring because it is used as a custom resource
+      ServiceToken: !GetAtt 'TestAlertFunction.Arn'
+      EndpointId: !Ref EndpointId
+      Stage: !Ref Stage
+      AccountId: !Ref 'AWS::AccountId'
+      Region: !Ref 'AWS::Region'
+  TestAlertFunctionLogGroup:
+    Condition: TestEnabled
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${AWS::StackName}'
+      RetentionInDays: 14
+  TestAlertFunction: # needs no monitoring because it is used as a custom resource
     Condition: TestEnabled
     Type: 'AWS::Lambda::Function'
     Properties:
       Code:
         ZipFile: |
           'use strict';
+          const https = require('https');
+          const querystring = require('querystring');
           const response = require('cfn-response');
-          const AWS = require('aws-sdk');
-          const cloudwatch = new AWS.CloudWatch({apiVersion: '2010-08-01'});
           exports.handler = (event, context, cb) => {
             console.log(JSON.stringify(event));
             if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-              cloudwatch.setAlarmState({
-                AlarmName: event.ResourceProperties.AlarmName,
-                StateValue: 'ALARM',
-                StateReason: 'This is a test alert.'
-              }, function(err, data) {
-                if (err) {
-                  console.log(JSON.stringify(err));
-                  response.send(event, context, response.FAILED, {});
-                } else {
-                  response.send(event, context, response.SUCCESS, {});
-                }
+              const alert = {
+                AccountId: event.ResourceProperties.AccountId,
+                Region: event.ResourceProperties.Region,
+                Message: 'Test alert'
+              };
+              const req = https.request({
+                hostname: 'api.marbot.io',
+                path: `/${event.ResourceProperties.Stage}/endpoint/${event.ResourceProperties.EndpointId}?${querystring.stringify(alert)}`,
+                method: 'GET'
+              }, (res) => {
+                res.on('data', () => {});
+                res.on('end', () => {
+                  if (res.statusCode === 204) {
+                    response.send(event, context, response.SUCCESS, {});
+                  } else {
+                    console.log(`unexpected status code ${res.statusCode}`);
+                    response.send(event, context, response.FAILED, {});
+                  }
+                });
               });
+              req.on('error', (e) => {
+                console.log(JSON.stringify(err));
+                response.send(event, context, response.FAILED, {});
+              });
+              req.end();
             } else {
               response.send(event, context, response.SUCCESS, {});
             }
           };
+      FunctionName: !Ref 'AWS::StackName'
       Handler: 'index.handler'
       MemorySize: 128
-      Role: !GetAtt 'CustomAlarmStateRole.Arn'
+      Role: !GetAtt 'TestAlertFunctionRole.Arn'
       Runtime: 'nodejs6.10'
-      Timeout: 10
-  CustomAlarmStateRole:
+      Timeout: 30
+  TestAlertFunctionRole:
     Condition: TestEnabled
     Type: 'AWS::IAM::Role'
     Properties:
@@ -710,15 +718,15 @@ Resources:
           Principal:
             Service: 'lambda.amazonaws.com'
           Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-      - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
       Policies:
-      - PolicyName: cloudwatch
+      - PolicyName: 'lambda'
         PolicyDocument:
           Statement:
           - Effect: Allow
-            Action: 'cloudwatch:SetAlarmState'
-            Resource: '*'
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: !GetAtt 'TestAlertFunctionLogGroup.Arn'
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -728,7 +736,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.5.0'
+    Value: '1.5.1'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
