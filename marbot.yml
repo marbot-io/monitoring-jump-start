@@ -155,8 +155,8 @@ Conditions:
   # Needs to be created in each region
   RootUserLoginEnabled: !Equals [!Ref RootUserLogin, 'true']
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
-  CodePipelineFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
-  CodeBuildFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
+  CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
+  CodeBuildFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
   CodeDeployFailedEnabled: !Equals [!Ref CodeDeployFailed, 'true']
   HealthIssueEnabled: !Equals [!Ref HealthIssue, 'true']
   AutoScalingFailedEnabled: !Equals [!Ref AutoScalingFailed, 'true']
