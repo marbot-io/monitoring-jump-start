@@ -109,10 +109,11 @@ Resources:
       - !Ref Topic
       AlarmDescription: 'Invocations failed due to errors'
       ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
       Dimensions:
       - Name: FunctionName
         Value: !Ref FunctionName
-      EvaluationPeriods: 1
+      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
       MetricName: Errors
       Namespace: 'AWS/Lambda'
       OKActions:
@@ -129,10 +130,11 @@ Resources:
       - !Ref Topic
       AlarmDescription: 'Invocation attempts were throttled due to invocation rates exceeding the concurrent limits'
       ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
       Dimensions:
       - Name: FunctionName
         Value: !Ref FunctionName
-      EvaluationPeriods: 1
+      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
       MetricName: Throttles
       Namespace: 'AWS/Lambda'
       OKActions:
