@@ -16,8 +16,10 @@ At the moment, you can monitor:
   * Don't forget to put the [marbot-elastic-beanstalk.config](marbot-elastic-beanstalk.config) file into your .ebextensions folder!
 * [ElastiCache memcached cluster](marbot-elasticache-memcached.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-elasticache-memcached.yml)
 * [Elasticsearch domain](marbot-elasticsearch.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-elasticsearch.yml)
+* [Lambda function](marbot-lambda-function.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/mmarbot-lambda-function.yml)
 * [RDS database instance](marbot-rds.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-rds.yml)
 * [RDS cluster (Aurora)](marbot-rds-cluster.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-rds-cluster.yml)
+* [SQS queue](marbot-sqs-queue.yml): [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-sqs-queue.yml)
 
 ## License
 All templates are published under Apache License Version 2.0.
