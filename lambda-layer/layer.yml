@@ -1,0 +1,23 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: Lambda Layer'
+Parameters:
+  ContentKey:
+    Description: 'The key of the S3 object - a ZIP file - including the layer content.'
+    Type: String
+Resources:
+  Layer:
+    Type: 'AWS::Lambda::LayerVersion'
+    Properties:
+      LayerName: 'monitoring-jump-start'
+      CompatibleRuntimes:
+      - 'nodejs8.10'
+      Content:
+        S3Bucket: !Sub monitoring-jump-start-layer-${AWS::Region}
+        S3Key: !Ref ContentKey
+  LayerPermission:
+    Type: 'AWS::Lambda::LayerVersionPermission'
+    Properties:
+      Action: 'lambda:GetLayerVersion'
+      LayerVersionArn: !Ref Layer
+      Principal: '*'
