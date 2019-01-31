@@ -37,6 +37,7 @@ Parameters:
     AllowedValues: [v1, dev]
   StackRegularExpression:
     Description: 'Regular expression used to filter CloudFormation stacks by name'
+    Type: String
     Default: '.*'
 Resources:
   ##########################################################################
@@ -513,7 +514,7 @@ Resources:
         Variables:
           REGION: !Ref 'AWS::Region'
           ACCOUNT: !Ref 'AWS::AccountId'
-          TOPIC_ARN:  !Ref Topic
+          TOPIC_ARN: !Ref Topic
       Code:
         ZipFile: |
           'use strict';
@@ -523,7 +524,7 @@ Resources:
           exports.handler = async (event, context) => {
             const url = `https://${process.env.REGION}.console.aws.amazon.com/cloudformation/home?region=${process.env.REGION}#/stacks/${querystring.escape(event.stackArn)}/drifts`;
             const msg = {
-              Account: process.env.ACCOUNT, 
+              Account: process.env.ACCOUNT,
               Region: process.env.REGION,
               Stack: `<${url}|${event.stackName}>`,
               Message: CloudFormation drift detected, stage changed from ${event.previousDriftStatus} to ${event.latestDriftStatus}.`,
