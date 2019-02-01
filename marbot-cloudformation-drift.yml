@@ -1,0 +1,549 @@
+---
+# Copyright 2019 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: CloudFormation Drift Detection (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'Configuration'
+      Parameters:
+      - StackRegularExpression
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  StackRegularExpression:
+    Description: 'Regular expression used to filter CloudFormation stacks by name'
+    Type: String
+    Default: '.*'
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicEndpointSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          minDelayTarget: 1
+          maxDelayTarget: 60
+          numRetries: 100
+          numNoDelayRetries: 0
+          backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                             STATE MACHINE                              #
+  #                                                                        #
+  ##########################################################################
+  StateMachineRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: !Sub 'states.${AWS::Region}.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: lambda
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'lambda:InvokeFunction'
+            Resource:
+            - !GetAtt 'FunctionFetchDriftStatus.Arn'
+            - !GetAtt 'FunctionStartDriftDetection.Arn'
+            - !GetAtt 'FunctionFetchDetectionStatus.Arn'
+            - !GetAtt 'FunctionSendDriftNotification.Arn'
+  RoleTrigger:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: lambda
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'cloudformation:ListStacks'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'states:StartExecution'
+            Resource: !Ref StateMachine
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: '*'
+  RoleFetchDriftStatus:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: lambda
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'cloudformation:DescribeStacks'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: '*'
+  RoleStartDriftDetection:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      ManagedPolicyArns:
+      - 'arn:aws:iam::aws:policy/ReadOnlyAccess' # needed for detecting drift
+      Policies:
+      - PolicyName: lambda
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - 'cloudformation:DetectStackDrift'
+            - 'cloudformation:DetectStackResourceDrift'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: '*'
+  RoleFetchDetectionStatus:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: lambda
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'cloudformation:DescribeStackDriftDetectionStatus'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: '*'
+  RoleSendDriftNotification:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: lambda
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'sns:Publish'
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - 'logs:CreateLogStream'
+            - 'logs:PutLogEvents'
+            Resource: '*'
+  Permission:
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref FunctionTrigger
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt 'Rule.Arn'
+  Rule:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      ScheduleExpression: 'rate(1 hour)'
+      State: ENABLED
+      Targets:
+      - Arn: !GetAtt 'FunctionTrigger.Arn'
+        Id: lambda
+  StateMachine:
+    Type: 'AWS::StepFunctions::StateMachine'
+    Properties:
+      DefinitionString: !Sub |
+        {
+          "Comment": "Detect drift of CloudFormation stack",
+          "StartAt": "FetchDriftStatus",
+          "TimeoutSeconds": 600,
+          "Version": "1.0",
+          "States": {
+            "FetchDriftStatus": {
+              "Type": "Task",
+              "Resource": "${FunctionFetchDriftStatus.Arn}",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 30,
+                "BackoffRate": 2
+              }],
+              "Next": "StartDriftDetection"
+            },
+            "StartDriftDetection": {
+              "Type": "Task",
+              "Resource": "${FunctionStartDriftDetection.Arn}",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 30,
+                "BackoffRate": 2
+              }],
+              "Next": "FetchDetectionStatus"
+            },
+            "FetchDetectionStatus": {
+              "Type": "Task",
+              "Resource": "${FunctionFetchDetectionStatus.Arn}",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 30,
+                "BackoffRate": 2
+              }],
+              "Next": "ChoiceDetectionComplete"
+            },
+            "ChoiceDetectionComplete": {
+              "Type": "Choice",
+              "Choices": [{
+                "Variable": "$.detectionStatus",
+                "StringEquals": "DETECTION_COMPLETE",
+                "Next": "ChoiceDriftStatusChanged"
+              },
+              {
+                "Variable": "$.detectionStatus",
+                "StringEquals": "DETECTION_FAILED",
+                "Next": "ChoiceDriftStatusChanged"
+              }],
+              "Default": "Wait"
+            },
+            "Wait": {
+              "Type": "Wait",
+              "Seconds": 10,
+              "Next": "FetchDetectionStatus"
+            },
+            "ChoiceDriftStatusChanged": {
+              "Type": "Choice",
+              "Choices": [{
+                "And": [
+                  {
+                    "Variable": "$.previousDriftStatus",
+                    "StringEquals": "IN_SYNC"
+                  },
+                  {
+                    "Variable": "$.latestDriftStatus",
+                    "StringEquals": "DRIFTED"
+                  }
+                ],
+                "Next": "SendDriftNotification"
+              },
+              {
+                "And": [
+                  {
+                    "Variable": "$.previousDriftStatus",
+                    "StringEquals": "UNKNOWN"
+                  },
+                  {
+                    "Variable": "$.latestDriftStatus",
+                    "StringEquals": "DRIFTED"
+                  }
+                ],
+                "Next": "SendDriftNotification"
+              },
+              {
+                "And": [
+                  {
+                    "Variable": "$.previousDriftStatus",
+                    "StringEquals": "NOT_CHECKED"
+                  },
+                  {
+                    "Variable": "$.latestDriftStatus",
+                    "StringEquals": "DRIFTED"
+                  }
+                ],
+                "Next": "SendDriftNotification"
+              }],
+              "Default": "Done"
+            },
+            "SendDriftNotification": {
+              "Type": "Task",
+              "Resource": "${FunctionSendDriftNotification.Arn}",
+              "Retry": [{
+                "ErrorEquals": ["States.TaskFailed"],
+                "IntervalSeconds": 5,
+                "MaxAttempts": 30,
+                "BackoffRate": 2
+              }],
+              "Next": "Done"
+            },
+            "Done": {
+              "Type": "Succeed"
+            }
+          }
+        }
+      RoleArn: !GetAtt 'StateMachineRole.Arn'
+  ExecutionsFailedAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Failed state machine executions.'
+      Namespace: 'AWS/States'
+      MetricName: ExecutionsFailed
+      Dimensions:
+      - Name: StateMachineArn
+        Value: !Ref StateMachine
+      Statistic: Sum
+      Period: 300
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Threshold: 0
+      TreatMissingData: notBreaching
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+      - !Ref Topic
+  ExecutionsTimeoutAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Failed state machine executions.'
+      Namespace: 'AWS/States'
+      MetricName: ExecutionsTimedOut
+      Dimensions:
+      - Name: StateMachineArn
+        Value: !Ref StateMachine
+      Statistic: Sum
+      Period: 300
+      DatapointsToAlarm: 1
+      EvaluationPeriods: 1
+      Threshold: 0
+      TreatMissingData: notBreaching
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+      - !Ref Topic
+  FunctionTrigger:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs8.10'
+      Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt 'RoleTrigger.Arn'
+      Environment:
+        Variables:
+          STATEMACHINE_ARN: !Ref StateMachine
+          STACK_REGEXP: !Ref StackRegularExpression
+      Code:
+        ZipFile: |
+          'use strict';
+          const AWS = require('aws-sdk')
+          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          const stepfunctions = new AWS.StepFunctions({apiVersion: '2016-11-23'});
+
+          let trigger = async (nextToken) => {
+            let params = {
+              StackStatusFilter: ['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED']
+            }
+            if (nextToken) {
+              params.NextToken = nextToken;
+            }
+            const listStacksResult = await cloudformation.listStacks(params).promise();
+            const stacks = listStacksResult.StackSummaries.filter(stack => stack.StackName.match(new RegExp(process.env.STACK_REGEXP)));
+            for (let stack of stacks) {
+              await stepfunctions.startExecution({stateMachineArn: process.env.STATEMACHINE_ARN, input: JSON.stringify({stackName: stack.StackName})}).promise();
+            }
+            if (listStacksResult.NextToken) {
+              trigger(listStacksResult.NextToken);
+            }
+          };
+
+          exports.handler = async (event, context) => {
+            await trigger();
+            return event;
+          };
+  LogGroupTrigger:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FunctionTrigger}'
+      RetentionInDays: 30
+  FunctionFetchDriftStatus:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs8.10'
+      Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt 'RoleFetchDriftStatus.Arn'
+      Code:
+        ZipFile: |
+          'use strict';
+          const AWS = require('aws-sdk')
+          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          exports.handler = async (event, context) => {
+            const result = await cloudformation.describeStacks({StackName: event.stackName}).promise();
+            const driftStatus = result.Stacks[0].DriftInformation.StackDriftStatus;
+            const arn = result.Stacks[0].StackId;
+            return Object.assign({}, event, {previousDriftStatus: driftStatus, stackArn: arn});
+          };
+  LogGroupFetchDriftStatus:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FunctionFetchDriftStatus}'
+      RetentionInDays: 30
+  FunctionStartDriftDetection:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs8.10'
+      Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt 'RoleStartDriftDetection.Arn'
+      Code:
+        ZipFile: |
+          'use strict';
+          const AWS = require('aws-sdk')
+          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          exports.handler = async (event, context) => {
+            const result = await cloudformation.detectStackDrift({StackName: event.stackName}).promise();
+            return Object.assign({}, event, {stackDriftDetectionId: result.StackDriftDetectionId});
+          };
+  LogGroupStartDriftDetection:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FunctionStartDriftDetection}'
+      RetentionInDays: 30
+  FunctionFetchDetectionStatus:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs8.10'
+      Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt 'RoleFetchDetectionStatus.Arn'
+      Code:
+        ZipFile: |
+          'use strict';
+          const AWS = require('aws-sdk')
+          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          exports.handler = async (event, context) => {
+            const result = await cloudformation.describeStackDriftDetectionStatus({StackDriftDetectionId: event.stackDriftDetectionId}).promise();
+            return Object.assign({}, event, {detectionStatus: result.DetectionStatus, latestDriftStatus: result.StackDriftStatus});
+          };
+  LogGroupFetchDetectionStatus:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FunctionFetchDetectionStatus}'
+      RetentionInDays: 30
+  FunctionSendDriftNotification:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs8.10'
+      Layers:
+      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
+      MemorySize: 128
+      Timeout: 30
+      Role: !GetAtt 'RoleSendDriftNotification.Arn'
+      Environment:
+        Variables:
+          REGION: !Ref 'AWS::Region'
+          ACCOUNT: !Ref 'AWS::AccountId'
+          TOPIC_ARN: !Ref Topic
+      Code:
+        ZipFile: |
+          'use strict';
+          const querystring = require("querystring");
+          const AWS = require('aws-sdk')
+          const sns = new AWS.SNS({apiVersion: '2010-03-31'});
+          exports.handler = async (event, context) => {
+            const url = `https://${process.env.REGION}.console.aws.amazon.com/cloudformation/home?region=${process.env.REGION}#/stacks/${querystring.escape(event.stackArn)}/drifts`;
+            const msg = {
+              Account: process.env.ACCOUNT,
+              Region: process.env.REGION,
+              Stack: `<${url}|${event.stackName}>`,
+              Message: CloudFormation drift detected, stage changed from ${event.previousDriftStatus} to ${event.latestDriftStatus}.`,
+            }
+            await sns.publish({TopicArn: process.env.TOPIC_ARN, Message: JSON.stringify(msg)}).promise();
+            return event;
+          };
+  LogGroupSendDriftNotification:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FunctionSendDriftNotification}'
+      RetentionInDays: 30
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-cloudformation-drift'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
