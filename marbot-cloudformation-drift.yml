@@ -275,8 +275,13 @@ Resources:
                 "Variable": "$.detectionStatus",
                 "StringEquals": "DETECTION_FAILED",
                 "Next": "ChoiceDriftStatusChanged"
+              },
+              {
+                "Variable": "$.detectionStatus",
+                "StringEquals": "DETECTION_IN_PROGRESS",
+                "Next": "Wait"
               }],
-              "Default": "Wait"
+              "Default": "Fail"
             },
             "Wait": {
               "Type": "Wait",
@@ -339,6 +344,9 @@ Resources:
             },
             "Done": {
               "Type": "Succeed"
+            },
+            "Fail": {
+              "Type": "Fail"
             }
           }
         }
