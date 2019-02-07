@@ -527,7 +527,7 @@ Resources:
               Account: process.env.ACCOUNT,
               Region: process.env.REGION,
               Stack: `<${url}|${event.stackName}>`,
-              Message: CloudFormation drift detected, stage changed from ${event.previousDriftStatus} to ${event.latestDriftStatus}.`,
+              Message: `CloudFormation drift detected, stage changed from ${event.previousDriftStatus} to ${event.latestDriftStatus}.`,
             }
             await sns.publish({TopicArn: process.env.TOPIC_ARN, Message: JSON.stringify(msg)}).promise();
             return event;
