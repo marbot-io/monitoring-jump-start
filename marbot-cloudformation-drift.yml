@@ -216,7 +216,7 @@ Resources:
   Rule:
     Type: 'AWS::Events::Rule'
     Properties:
-      ScheduleExpression: 'rate(1 hour)'
+      ScheduleExpression: 'rate(24 hours)'
       State: ENABLED
       Targets:
       - Arn: !GetAtt 'FunctionTrigger.Arn'
