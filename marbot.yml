@@ -705,7 +705,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'TestAlertFunctionRole.Arn'
-      Runtime: 'nodejs6.10'
+      Runtime: 'nodejs8.10'
       Timeout: 30
   TestAlertFunctionRole:
     Condition: TestEnabled
