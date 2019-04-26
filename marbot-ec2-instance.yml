@@ -277,7 +277,7 @@ Resources:
   LambdaPolicy:
     Type: 'AWS::IAM::Policy'
     Properties:
-      PolicyDocument: 
+      PolicyDocument:
         Statement:
         - Effect: Allow
           Action:
