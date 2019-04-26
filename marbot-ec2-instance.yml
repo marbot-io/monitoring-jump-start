@@ -31,6 +31,7 @@ Metadata:
       Parameters:
       - CPUUtilizationThreshold
       - CPUCreditBalanceThreshold
+      - NetworkUtilizationThreshold
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -54,6 +55,12 @@ Parameters:
     Type: Number
     Default: 20
     MinValue: 0
+  NetworkUtilizationThreshold:
+    Description: 'The maximum percentage of network utilization.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
 Resources:
   ##########################################################################
   #                                                                        #
@@ -165,9 +172,10 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average Network In+Out burst utilization too high (created by marbot).'
       ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 1
+      EvaluationPeriods: 3
+      DatapointsToAlarm: 2
       Metrics:
       - Id: 'in'
         Label: 'In'
@@ -178,7 +186,7 @@ Resources:
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 600
+          Period: 300
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -191,7 +199,7 @@ Resources:
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 600
+          Period: 300
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -208,9 +216,10 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out baseline utilization over last 30 minutes too high (created by marbot).'
+      AlarmDescription: 'Average Network In+Out baseline utilization too high (created by marbot).'
       ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 3
+      EvaluationPeriods: 6
+      DatapointsToAlarm: 4
       Metrics:
       - Id: in
         Label: In
@@ -221,7 +230,7 @@ Resources:
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 600
+          Period: 300
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -234,7 +243,7 @@ Resources:
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 600
+          Period: 300
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -256,6 +265,7 @@ Resources:
     Version: '1.0'
     Properties:
       InstanceId: !Ref InstanceId
+      NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       ServiceToken: !GetAtt 'LambdaFunction.Arn'
   LambdaRole:
     Type: 'AWS::IAM::Role'
@@ -338,8 +348,8 @@ Resources:
                       if (network === undefined) {
                         console.log(`No network data found for instance #${event.ResourceProperties.InstanceId} of type ${instance.InstanceType}`);
                       }
-                      const networkBurst = (network !== undefined && network.burst !== undefined) ? network.burst*0.8 : 999;
-                      const networkBaseline = (network !== undefined && network.baseline !== undefined) ? network.baseline*0.8 : 999;
+                      const networkBurst = (network !== undefined && network.burst !== undefined) ? network.burst/100*event.ResourceProperties.NetworkUtilizationThreshold : 999;
+                      const networkBaseline = (network !== undefined && network.baseline !== undefined) ? network.baseline/100*event.ResourceProperties.NetworkUtilizationThreshold : 999;
                       response.send(event, context, response.SUCCESS, {
                         InstanceType: instance.InstanceType,
                         NetworkBurst: networkBurst, // in Gbit/s
