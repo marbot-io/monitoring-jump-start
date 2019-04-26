@@ -338,8 +338,8 @@ Resources:
                       if (network === undefined) {
                         console.log(`No network data found for instance #${event.ResourceProperties.InstanceId} of type ${instance.InstanceType}`);
                       }
-                      const networkBurst = (network !== undefined && network.burst !== undefined) ? network.burst : 999;
-                      const networkBaseline = (network !== undefined && network.baseline !== undefined) ? network.baseline : 999;
+                      const networkBurst = (network !== undefined && network.burst !== undefined) ? network.burst*0.8 : 999;
+                      const networkBaseline = (network !== undefined && network.baseline !== undefined) ? network.baseline*0.8 : 999;
                       response.send(event, context, response.SUCCESS, {
                         InstanceType: instance.InstanceType,
                         NetworkBurst: networkBurst, // in Gbit/s
