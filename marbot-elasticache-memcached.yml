@@ -165,11 +165,6 @@ Resources:
       Period: 60
       Statistic: Sum
       Threshold: !Ref EvictionsThreshold
-  ##########################################################################
-  #                                                                        #
-  #                            CUSTOM RESOURCES                            #
-  #                                                                        #
-  ##########################################################################
   NotificationTopicConfiguration:
     DependsOn: TopicEndpointSubscription
     Type: 'Custom::NotificationTopicConfiguration'
@@ -178,6 +173,11 @@ Resources:
       ServiceToken: !GetAtt 'CustomNotificationTopicConfigurationFunction.Arn'
       CacheClusterId: !Ref CacheClusterId
       NotificationTopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                            CUSTOM RESOURCES                            #
+  #                                                                        #
+  ##########################################################################
   CustomNotificationTopicConfigurationFunction: # needs no monitoring because it is used as a custom resource
     Type: 'AWS::Lambda::Function'
     Properties:

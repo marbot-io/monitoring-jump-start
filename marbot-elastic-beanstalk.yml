@@ -85,11 +85,6 @@ Resources:
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
-  ##########################################################################
-  #                                                                        #
-  #                            CUSTOM RESOURCES                            #
-  #                                                                        #
-  ##########################################################################
   NotificationTopicConfiguration:
     DependsOn: TopicEndpointSubscription
     Type: 'Custom::NotificationTopicConfiguration'
@@ -99,6 +94,11 @@ Resources:
       ApplicationName: !Ref ApplicationName
       EnvironmentName: !Ref EnvironmentName
       NotificationTopicArn: !Ref Topic
+  ##########################################################################
+  #                                                                        #
+  #                            CUSTOM RESOURCES                            #
+  #                                                                        #
+  ##########################################################################
   CustomNotificationTopicConfigurationFunction: # needs no monitoring because it is used as a custom resource
     Type: 'AWS::Lambda::Function'
     Properties:

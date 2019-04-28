@@ -31,6 +31,7 @@ Metadata:
       Parameters:
       - CPUUtilizationThreshold
       - CPUCreditBalanceThreshold
+      - NetworkUtilizationThreshold
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -54,6 +55,12 @@ Parameters:
     Type: Number
     Default: 20
     MinValue: 0
+  NetworkUtilizationThreshold:
+    Description: 'The maximum percentage of network utilization.'
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
 Resources:
   ##########################################################################
   #                                                                        #
@@ -121,6 +128,7 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
+      TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
@@ -140,6 +148,7 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUCreditBalanceThreshold
+      TreatMissingData: notBreaching
   StatusCheckFailedAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
@@ -159,6 +168,273 @@ Resources:
       Period: 600
       Statistic: Sum
       Threshold: 0
+      TreatMissingData: notBreaching
+  NetworkBurstUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: 'in'
+        Label: 'In'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: 'out'
+        Label: 'Out'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
+        Id: 'inout'
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkBurst' # in Gbit/s
+      TreatMissingData: notBreaching
+  NetworkBaselineUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: in
+        Label: In
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: out
+        Label: Out
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
+        Id: inout
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkBaseline' # in Gbit/s
+      TreatMissingData: notBreaching
+  NetworkUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: in
+        Label: In
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes out per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: out
+        Label: Out
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes out per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
+        Id: inout
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkMaximum' # in Gbit/s
+      TreatMissingData: notBreaching
+  InstanceDetails:
+    Type: 'Custom::InstanceDetails'
+    DependsOn: LambdaPolicy
+    Version: '1.0'
+    Properties:
+      InstanceId: !Ref InstanceId
+      NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
+      ServiceToken: !GetAtt 'LambdaFunction.Arn'
+  ##########################################################################
+  #                                                                        #
+  #                            CUSTOM RESOURCES                            #
+  #                                                                        #
+  ##########################################################################
+  LambdaRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: ec2
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'ec2:DescribeInstances'
+            Resource: '*'
+  LambdaPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'logs:CreateLogStream'
+          - 'logs:PutLogEvents'
+          Resource: !GetAtt 'LambdaLogGroup.Arn'
+      PolicyName: lambda
+      Roles:
+      - !Ref LambdaRole
+  LambdaFunction: # needs no monitoring because it is used as a custom resource
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Code:
+        ZipFile: |
+          'use strict';
+          const https = require('https');
+          const AWS = require('aws-sdk');
+          const response = require('cfn-response');
+          const ec2 = new AWS.EC2({apiVersion: '2016-11-15'});
+          function getData(cb) {
+            https.get('https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json', (res) => {
+              if (res.statusCode === 200) {
+                const chunks = [];
+                res.on('data', (chunk) => chunks.push(chunk));
+                res.on('end', () => {
+                  const body = Buffer.concat(chunks);
+                  const json = body.toString('utf8');
+                  const data = JSON.parse(json);
+                  cb(null, data);
+                });
+                } else {
+                  cb(new Error(`unexpeczted status code: ${res.statusCode}`));
+                }
+            }).on('error', (err) => {
+              cb(err);
+            });
+          }
+          function format(n, networkUtilizationThreshold) {
+            if (n === undefined) {
+              return 99;
+            }
+            return Math.round(n * networkUtilizationThreshold) / 100;
+          }
+          exports.handler = (event, context) => {
+            console.log(`Invoke: ${JSON.stringify(event)}`);
+            if (event.RequestType === 'Delete') {
+              response.send(event, context, response.SUCCESS, {});
+            } else if (event.RequestType === 'Create' || event.RequestType === 'Update') {
+              getData((err, networkData) => {
+                if (err) {
+                  console.log(`Error: ${JSON.stringify(err)}`);
+                  response.send(event, context, response.FAILED, {});
+                } else {
+                  ec2.describeInstances({
+                    InstanceIds: [event.ResourceProperties.InstanceId]
+                  }, (err, instanceData) => {
+                    if (err) {
+                      console.log(`Error: ${JSON.stringify(err)}`);
+                      response.send(event, context, response.FAILED, {});
+                    } else {
+                      const instance = instanceData.Reservations[0].Instances[0];
+                      console.log(`Instance data: ${JSON.stringify(instance)}`);
+                      const network = networkData[instance.InstanceType];
+                      let networkMaximum = undefined;
+                      let networkBurst = undefined;
+                      let networkBaseline = undefined;
+                      if (network !== undefined) {
+                        if (network.baseline !== undefined && network.burst !== undefined) {
+                          networkBaseline = network.baseline;
+                          networkBurst = network.burst;
+                        } else if (network.baseline !== undefined) {
+                          networkMaximum = network.baseline;
+                        }
+                      } else {
+                        console.log(`No network data found for instance #${event.ResourceProperties.InstanceId} of type ${instance.InstanceType}`);
+                      }
+                      response.send(event, context, response.SUCCESS, {
+                        InstanceType: instance.InstanceType,
+                        NetworkMaximum: format(networkMaximum, event.ResourceProperties.NetworkUtilizationThreshold), // in Gbit/s
+                        NetworkBurst: format(networkBurst, event.ResourceProperties.NetworkUtilizationThreshold), // in Gbit/s
+                        NetworkBaseline: format(networkBaseline, event.ResourceProperties.NetworkUtilizationThreshold) // in Gbit/s
+                      }, event.ResourceProperties.InstanceId);
+                    }
+                  });
+                }
+              });
+            } else {
+              cb(new Error(`unsupported RequestType: ${event.RequestType}`));
+            }
+          };
+      Handler: 'index.handler'
+      MemorySize: 128
+      Role: !GetAtt 'LambdaRole.Arn'
+      Runtime: 'nodejs8.10'
+      Timeout: 60
+  LambdaLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${LambdaFunction}'
+      RetentionInDays: 14
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -168,4 +444,4 @@ Outputs:
     Value: 'marbot-ec2-instance'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.0'
+    Value: '2.0.0'
