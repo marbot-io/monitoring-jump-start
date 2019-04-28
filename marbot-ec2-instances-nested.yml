@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# ONLY USE AS A NESTED STACK OF marbot-ec2-instances.yaml
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'marbot.io: EC2 instances (up to ten) monitoring [nested] (https://github.com/marbot-io/monitoring-jump-start)'
 Parameters:
