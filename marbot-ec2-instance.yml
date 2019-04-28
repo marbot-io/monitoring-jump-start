@@ -175,10 +175,9 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out burst utilization too high, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon (created by marbot).'
       ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 30
-      DatapointsToAlarm: 10
+      EvaluationPeriods: 1
       Metrics:
       - Id: 'in'
         Label: 'In'
@@ -189,7 +188,7 @@ Resources:
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 60
+          Period: 600
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -202,11 +201,11 @@ Resources:
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 60
+          Period: 600
           Stat: Average
           Unit: Bytes
         ReturnData: false
-      - Expression: 'SUM(METRICS())/60*8/1000/1000/1000' # to Gbit/s
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
         Id: 'inout'
         Label: 'In+Out'
         ReturnData: true
@@ -250,7 +249,7 @@ Resources:
           Stat: Average
           Unit: Bytes
         ReturnData: false
-      - Expression: 'SUM(METRICS())/60*8/1000/1000/1000' # to Gbit/s
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
         Id: inout
         Label: 'In+Out'
         ReturnData: true
@@ -294,7 +293,7 @@ Resources:
           Stat: Average
           Unit: Bytes
         ReturnData: false
-      - Expression: 'SUM(METRICS())/60*8/1000/1000/1000' # to Gbit/s
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
         Id: inout
         Label: 'In+Out'
         ReturnData: true
