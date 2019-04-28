@@ -301,11 +301,6 @@ Resources:
       - !Ref Topic
       Threshold: !GetAtt 'InstanceDetails.NetworkMaximum' # in Gbit/s
       TreatMissingData: notBreaching
-  ##########################################################################
-  #                                                                        #
-  #                            CUSTOM RESOURCES                            #
-  #                                                                        #
-  ##########################################################################
   InstanceDetails:
     Type: 'Custom::InstanceDetails'
     DependsOn: LambdaPolicy
@@ -314,6 +309,11 @@ Resources:
       InstanceId: !Ref InstanceId
       NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       ServiceToken: !GetAtt 'LambdaFunction.Arn'
+  ##########################################################################
+  #                                                                        #
+  #                            CUSTOM RESOURCES                            #
+  #                                                                        #
+  ##########################################################################
   LambdaRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -444,4 +444,4 @@ Outputs:
     Value: 'marbot-ec2-instance'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.2.0'
+    Value: '2.0.0'

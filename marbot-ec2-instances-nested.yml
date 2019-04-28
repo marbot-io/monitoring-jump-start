@@ -1,0 +1,246 @@
+---
+# Copyright 2018 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: EC2 instances (up to ten) monitoring [nested] (https://github.com/marbot-io/monitoring-jump-start)'
+Parameters:
+  Topic: # ARN
+    Type: String
+  CustomResourceLambda: # ARN
+    Type: String
+  InstanceId:
+    Type: String
+  CPUUtilizationThreshold:
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+  CPUCreditBalanceThreshold:
+    Type: Number
+    Default: 20
+    MinValue: 0
+  NetworkUtilizationThreshold:
+    Type: Number
+    Default: 80
+    MinValue: 0
+    MaxValue: 100
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  CPUUtilizationTooHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: CPUUtilization
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUUtilizationThreshold
+      TreatMissingData: notBreaching
+  CPUCreditBalanceTooLowAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: CPUCreditBalance
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref CPUCreditBalanceThreshold
+      TreatMissingData: notBreaching
+  StatusCheckFailedAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: StatusCheckFailed
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Sum
+      Threshold: 0
+      TreatMissingData: notBreaching
+  NetworkBurstUtilizationTooHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: 'in'
+        Label: 'In'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: 'out'
+        Label: 'Out'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
+        Id: 'inout'
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkBurst' # in Gbit/s
+      TreatMissingData: notBreaching
+  NetworkBaselineUtilizationTooHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: in
+        Label: In
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: out
+        Label: Out
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
+        Id: inout
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkBaseline' # in Gbit/s
+      TreatMissingData: notBreaching
+  NetworkUtilizationTooHighAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: in
+        Label: In
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes out per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: out
+        Label: Out
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes out per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in+out)/60*8/1000/1000/1000' # to Gbit/s
+        Id: inout
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkMaximum' # in Gbit/s
+      TreatMissingData: notBreaching
+  InstanceDetails:
+    Type: 'Custom::InstanceDetails'
+    Version: '1.0'
+    Properties:
+      InstanceId: !Ref InstanceId
+      NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
+      ServiceToken: !Ref CustomResourceLambda
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-ec2-instances-nested'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '2.0.0'
