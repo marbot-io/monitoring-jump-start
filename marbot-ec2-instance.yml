@@ -128,6 +128,7 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
+      TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
@@ -147,6 +148,7 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUCreditBalanceThreshold
+      TreatMissingData: notBreaching
   StatusCheckFailedAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
@@ -166,27 +168,28 @@ Resources:
       Period: 600
       Statistic: Sum
       Threshold: 0
+      TreatMissingData: notBreaching
   NetworkBurstUtilizationTooHighAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out burst utilization too high (created by marbot).'
+      AlarmDescription: 'Average Network In+Out burst utilization too high, expect a significant performance drop soon (created by marbot).'
       ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 3
-      DatapointsToAlarm: 2
+      EvaluationPeriods: 30
+      DatapointsToAlarm: 10
       Metrics:
       - Id: 'in'
         Label: 'In'
         MetricStat:
           Metric:
             Namespace: 'AWS/EC2'
-            MetricName: NetworkIn
+            MetricName: NetworkIn # bytes per minute
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 300
+          Period: 60
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -195,42 +198,42 @@ Resources:
         MetricStat:
           Metric:
             Namespace: 'AWS/EC2'
-            MetricName: NetworkOut
+            MetricName: NetworkOut # bytes per minute
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 300
+          Period: 60
           Stat: Average
           Unit: Bytes
         ReturnData: false
-      - Expression: 'SUM(METRICS())*8/1000/1000/1000' # to Gbit/s
+      - Expression: 'SUM(METRICS())/60*8/1000/1000/1000' # to Gbit/s
         Id: 'inout'
         Label: 'In+Out'
         ReturnData: true
       OKActions:
       - !Ref Topic
       Threshold: !GetAtt 'InstanceDetails.NetworkBurst' # in Gbit/s
+      TreatMissingData: notBreaching
   NetworkBaselineUtilizationTooHighAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out baseline utilization too high (created by marbot).'
+      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst (created by marbot).'
       ComparisonOperator: GreaterThanThreshold
-      EvaluationPeriods: 6
-      DatapointsToAlarm: 4
+      EvaluationPeriods: 1
       Metrics:
       - Id: in
         Label: In
         MetricStat:
           Metric:
             Namespace: 'AWS/EC2'
-            MetricName: NetworkIn
+            MetricName: NetworkIn # bytes per minute
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 300
+          Period: 600
           Stat: Average
           Unit: Bytes
         ReturnData: false
@@ -239,21 +242,66 @@ Resources:
         MetricStat:
           Metric:
             Namespace: 'AWS/EC2'
-            MetricName: NetworkOut
+            MetricName: NetworkOut # bytes per minute
             Dimensions:
             - Name: InstanceId
               Value: !Ref InstanceId
-          Period: 300
+          Period: 600
           Stat: Average
           Unit: Bytes
         ReturnData: false
-      - Expression: 'SUM(METRICS())*8/1000/1000/1000' # to Gbit/s
+      - Expression: 'SUM(METRICS())/60*8/1000/1000/1000' # to Gbit/s
         Id: inout
         Label: 'In+Out'
         ReturnData: true
       OKActions:
       - !Ref Topic
       Threshold: !GetAtt 'InstanceDetails.NetworkBaseline' # in Gbit/s
+      TreatMissingData: notBreaching
+  NetworkUtilizationTooHighAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high (created by marbot).'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: in
+        Label: In
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkIn # bytes out per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Id: out
+        Label: Out
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EC2'
+            MetricName: NetworkOut # bytes out per minute
+            Dimensions:
+            - Name: InstanceId
+              Value: !Ref InstanceId
+          Period: 600
+          Stat: Average
+          Unit: Bytes
+        ReturnData: false
+      - Expression: 'SUM(METRICS())/60*8/1000/1000/1000' # to Gbit/s
+        Id: inout
+        Label: 'In+Out'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !GetAtt 'InstanceDetails.NetworkMaximum' # in Gbit/s
+      TreatMissingData: notBreaching
   ##########################################################################
   #                                                                        #
   #                            CUSTOM RESOURCES                            #
@@ -325,6 +373,12 @@ Resources:
               cb(err);
             });
           }
+          function format(n, networkUtilizationThreshold) {
+            if (n === undefined) {
+              return 99;
+            }
+            return Math.round(n * networkUtilizationThreshold) / 100;
+          }
           exports.handler = (event, context) => {
             console.log(`Invoke: ${JSON.stringify(event)}`);
             if (event.RequestType === 'Delete') {
@@ -345,15 +399,24 @@ Resources:
                       const instance = instanceData.Reservations[0].Instances[0];
                       console.log(`Instance data: ${JSON.stringify(instance)}`);
                       const network = networkData[instance.InstanceType];
-                      if (network === undefined) {
+                      let networkMaximum = undefined;
+                      let networkBurst = undefined;
+                      let networkBaseline = undefined;
+                      if (network !== undefined) {
+                        if (network.baseline !== undefined && network.burst !== undefined) {
+                          networkBaseline = network.baseline;
+                          networkBurst = network.burst;
+                        } else if (network.baseline !== undefined) {
+                          networkMaximum = network.baseline;
+                        }
+                      } else {
                         console.log(`No network data found for instance #${event.ResourceProperties.InstanceId} of type ${instance.InstanceType}`);
                       }
-                      const networkBurst = (network !== undefined && network.burst !== undefined) ? network.burst/100*event.ResourceProperties.NetworkUtilizationThreshold : 999;
-                      const networkBaseline = (network !== undefined && network.baseline !== undefined) ? network.baseline/100*event.ResourceProperties.NetworkUtilizationThreshold : 999;
                       response.send(event, context, response.SUCCESS, {
                         InstanceType: instance.InstanceType,
-                        NetworkBurst: networkBurst, // in Gbit/s
-                        NetworkBaseline: networkBaseline // in Gbit/s
+                        NetworkMaximum: format(networkMaximum, event.ResourceProperties.NetworkUtilizationThreshold), // in Gbit/s
+                        NetworkBurst: format(networkBurst, event.ResourceProperties.NetworkUtilizationThreshold), // in Gbit/s
+                        NetworkBaseline: format(networkBaseline, event.ResourceProperties.NetworkUtilizationThreshold) // in Gbit/s
                       }, event.ResourceProperties.InstanceId);
                     }
                   });
