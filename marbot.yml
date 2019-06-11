@@ -47,6 +47,8 @@ Metadata:
       - AutoScalingFailed
       - GuardDutyFinding
       - EMRFailed
+      - EBSFailed
+      - SSMFailed
       - RDSIssue
 Parameters:
   EndpointId:
@@ -73,47 +75,47 @@ Parameters:
     Default: '10'
     AllowedPattern: '^[0-9]*$'
   AMIUpdateNotificationECSOptimized:
-    Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only, requires marbot plus).'
+    Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only).'
     Type: String
     Default: true
     AllowedValues: [true, false]
   AMIUpdateNotificationAmazonLinux:
-    Description: 'Receive an alert, if a new Amazon Linux AMI is released (works in us-east-1 only, requires marbot plus).'
+    Description: 'Receive an alert, if a new Amazon Linux AMI is released (works in us-east-1 only).'
     Type: String
     Default: true
     AllowedValues: [true, false]
   AMIUpdateNotificationAmazonLinux2:
-    Description: 'Receive an alert, if a new Amazon Linux 2 AMI is released (works in us-east-1 only, requires marbot plus).'
+    Description: 'Receive an alert, if a new Amazon Linux 2 AMI is released (works in us-east-1 only).'
     Type: String
     Default: true
     AllowedValues: [true, false]
   RootUserLogin:
-    Description: 'Receive an alert, if a root user login is performed (requires marbot plus).'
+    Description: 'Receive an alert, if a root user login is performed.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   BatchFailed:
-    Description: 'Receive an alert, if a Batch job fails (requires marbot plus).'
+    Description: 'Receive an alert, if a Batch job fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CodePipelineFailed:
-    Description: 'Receive an alert, if a CodePipeline execution fails (requires marbot plus).'
+    Description: 'Receive an alert, if a CodePipeline execution fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CodeBuildFailed:
-    Description: 'Receive an alert, if a CodeBuild build fails (requires marbot plus).'
+    Description: 'Receive an alert, if a CodeBuild build fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CodeDeployFailed:
-    Description: 'Receive an alert, if a CodeDeploy deployment fails (requires marbot plus).'
+    Description: 'Receive an alert, if a CodeDeploy deployment fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   HealthIssue:
-    Description: 'Receive an alert, if AWS is experiencing events that may impact you (requires marbot plus).'
+    Description: 'Receive an alert, if AWS is experiencing events that may impact you.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -123,22 +125,32 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   AutoScalingFailed:
-    Description: 'Receive an alert, if an EC2 instance fails to start or terminate in an Auto Scaling Group (requires marbot plus).'
+    Description: 'Receive an alert, if an EC2 instance fails to start or terminate in an Auto Scaling Group.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   GuardDutyFinding:
-    Description: 'Receive an alert, if a GuardDuty finding is created (requires marbot plus).'
+    Description: 'Receive an alert, if a GuardDuty finding is created.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   EMRFailed:
-    Description: 'Receive an alert, if an EMR step or auto scaling policy fails (requires marbot plus).'
+    Description: 'Receive an alert, if an EMR step or auto scaling policy fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  EBSFailed:
+    Description: 'Receive an alert, if an EBS snapshot fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  SSMFailed:
+    Description: 'Receive an alert, if an SSM maintenance window execution fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   RDSIssue:
-    Description: 'Receive an alert, if an RDS issue is detected (requires marbot plus).'
+    Description: 'Receive an alert, if an RDS issue is detected.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -162,6 +174,8 @@ Conditions:
   AutoScalingFailedEnabled: !Equals [!Ref AutoScalingFailed, 'true']
   GuardDutyFindingEnabled: !Equals [!Ref GuardDutyFinding, 'true']
   EMRFailedEnabled: !Equals [!Ref EMRFailed, 'true']
+  EBSFailedEnabled: !Equals [!Ref EBSFailed, 'true']
+  SSMFailedEnabled: !Equals [!Ref SSMFailed, 'true']
   RDSIssueEnabled: !Equals [!Ref RDSIssue, 'true']
 Resources:
   ##########################################################################
@@ -561,6 +575,7 @@ Resources:
         detail:
           'eventTypeCategory':
           - issue
+          - scheduledChange
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -609,6 +624,43 @@ Resources:
         detail:
           state:
           - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  EBSFailedEvent:
+    Condition: EBSFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'EBS snapshot failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.ec2'
+        'detail-type':
+        - 'EBS Snapshot Notification'
+        detail:
+          result:
+          - failed
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  SSMFailedEnabled:
+    Condition: SSMFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'SSM maintenance window execution failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.ssm'
+        'detail-type':
+        - 'Maintenance Window Execution State-change Notification'
+        detail:
+          status:
+          - FAILED
+          - TIMED_OUT
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -736,7 +788,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.5.1'
+    Value: '1.6.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
