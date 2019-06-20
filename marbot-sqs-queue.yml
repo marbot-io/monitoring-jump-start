@@ -117,7 +117,7 @@ Resources:
       Namespace: 'AWS/SQS'
       OKActions:
       - !Ref Topic
-      Period: 60
+      Period: 300
       Statistic: Maximum
       Threshold: !Ref ApproximateAgeOfOldestMessageThreshold
       TreatMissingData: notBreaching
@@ -137,7 +137,7 @@ Resources:
       Namespace: 'AWS/SQS'
       OKActions:
       - !Ref Topic
-      Period: 60
+      Period: 300
       Statistic: Maximum
       Threshold: !Ref ApproximateNumberOfMessagesVisibleThreshold
       TreatMissingData: notBreaching
