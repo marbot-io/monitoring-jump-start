@@ -201,6 +201,7 @@ Resources:
             - 'budgets.amazonaws.com' # Allow Budget Notifications
             - 'rds.amazonaws.com' # Allow RDS Events
             - 's3.amazonaws.com' # Allow S3 Event Notifications
+            - 'backup.amazonaws.com' # Allow Backup Events
           Action: 'sns:Publish'
           Resource: !Ref Topic
         - Sid: Sid2
@@ -788,7 +789,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.6.0'
+    Value: '1.7.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
