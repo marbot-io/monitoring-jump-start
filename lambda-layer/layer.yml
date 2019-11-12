@@ -25,6 +25,7 @@ Resources:
       LayerName: 'monitoring-jump-start'
       CompatibleRuntimes:
       - 'nodejs8.10'
+      - 'nodejs10.x'
       Content:
         S3Bucket: !Sub monitoring-jump-start-layer-${AWS::Region}
         S3Key: !Ref ContentKey

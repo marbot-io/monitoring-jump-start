@@ -389,7 +389,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs8.10'
+      Runtime: 'nodejs10.x'
       Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
@@ -436,7 +436,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs8.10'
+      Runtime: 'nodejs10.x'
       Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
@@ -462,7 +462,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs8.10'
+      Runtime: 'nodejs10.x'
       Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
@@ -486,7 +486,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs8.10'
+      Runtime: 'nodejs10.x'
       Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
@@ -510,7 +510,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs8.10'
+      Runtime: 'nodejs10.x'
       Layers:
       - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
