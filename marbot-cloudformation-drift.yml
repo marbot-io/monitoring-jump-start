@@ -390,8 +390,6 @@ Resources:
     Properties:
       Handler: 'index.handler'
       Runtime: 'nodejs10.x'
-      Layers:
-      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleTrigger.Arn'
@@ -437,8 +435,6 @@ Resources:
     Properties:
       Handler: 'index.handler'
       Runtime: 'nodejs10.x'
-      Layers:
-      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDriftStatus.Arn'
@@ -463,8 +459,6 @@ Resources:
     Properties:
       Handler: 'index.handler'
       Runtime: 'nodejs10.x'
-      Layers:
-      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleStartDriftDetection.Arn'
@@ -487,8 +481,6 @@ Resources:
     Properties:
       Handler: 'index.handler'
       Runtime: 'nodejs10.x'
-      Layers:
-      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDetectionStatus.Arn'
@@ -511,8 +503,6 @@ Resources:
     Properties:
       Handler: 'index.handler'
       Runtime: 'nodejs10.x'
-      Layers:
-      - !Sub 'arn:aws:lambda:${AWS::Region}:853553028582:layer:monitoring-jump-start:1'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleSendDriftNotification.Arn'
