@@ -721,7 +721,7 @@ Resources:
           'use strict';
           const https = require('https');
           const querystring = require('querystring');
-          const response = require('cfn-response');
+          const response = require('./cfn-response');
           exports.handler = (event, context, cb) => {
             console.log(JSON.stringify(event));
             if (event.RequestType === 'Create' || event.RequestType === 'Update') {

@@ -184,7 +184,7 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const response = require('cfn-response');
+          const response = require('./cfn-response');
           const AWS = require('aws-sdk');
           const elasticache = new AWS.ElastiCache({apiVersion: '2015-02-02'});
           exports.handler = (event, context, cb) => {

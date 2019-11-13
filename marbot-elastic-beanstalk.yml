@@ -105,7 +105,7 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const response = require('cfn-response');
+          const response = require('./cfn-response');
           const AWS = require('aws-sdk');
           const elasticbeanstalk = new AWS.ElasticBeanstalk({apiVersion: '2010-12-01'});
           exports.handler = (event, context, cb) => {
