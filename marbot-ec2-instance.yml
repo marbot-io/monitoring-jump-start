@@ -444,4 +444,4 @@ Outputs:
     Value: 'marbot-ec2-instance'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.1.0'
+    Value: '2.1.1'
