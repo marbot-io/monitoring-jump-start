@@ -50,6 +50,7 @@ Metadata:
       - EBSFailed
       - SSMFailed
       - RDSIssue
+      - GlueJobFailed
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -154,6 +155,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  GlueJobFailed:
+    Description: 'Receive an alert, if a Glue job fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -177,6 +183,7 @@ Conditions:
   EBSFailedEnabled: !Equals [!Ref EBSFailed, 'true']
   SSMFailedEnabled: !Equals [!Ref SSMFailed, 'true']
   RDSIssueEnabled: !Equals [!Ref RDSIssue, 'true']
+  GlueJobFailedEnabled: !Equals [!Ref GlueJobFailed, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -691,6 +698,25 @@ Resources:
       - notification
       SnsTopicArn: !Ref Topic
       SourceType: 'db-cluster'
+  GlueJobFailedEvent:
+    Condition: GlueJobFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Glue job failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.glue'
+        'detail-type':
+        - 'Glue Job State Change'
+        detail:
+          'state':
+          - FAILED
+          - TIMEOUT
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -789,7 +815,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.8.1'
+    Value: '1.9.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
