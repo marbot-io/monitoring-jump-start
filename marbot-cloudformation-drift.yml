@@ -430,7 +430,7 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${FunctionTrigger}'
       RetentionInDays: 30
-  FunctionFetchDriftStatus:
+  FunctionFetchDriftStatus: # no monitoring needed because function is invoked by StepFunctions
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
@@ -454,7 +454,7 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${FunctionFetchDriftStatus}'
       RetentionInDays: 30
-  FunctionStartDriftDetection:
+  FunctionStartDriftDetection: # no monitoring needed because function is invoked by StepFunctions
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
@@ -476,7 +476,7 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${FunctionStartDriftDetection}'
       RetentionInDays: 30
-  FunctionFetchDetectionStatus:
+  FunctionFetchDetectionStatus: # no monitoring needed because function is invoked by StepFunctions
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
@@ -498,7 +498,7 @@ Resources:
     Properties:
       LogGroupName: !Sub '/aws/lambda/${FunctionFetchDetectionStatus}'
       RetentionInDays: 30
-  FunctionSendDriftNotification:
+  FunctionSendDriftNotification: # no monitoring needed because function is invoked by StepFunctions
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
