@@ -39,6 +39,9 @@ Metadata:
         default: 'Events'
       Parameters:
       - RootUserLogin
+      - CloudWatchAlarmFired
+      - CloudWatchAlarmOrphaned
+      - CloudWatchAlarmAutoClose
       - BatchFailed
       - CodePipelineFailed
       - CodeBuildFailed
@@ -78,12 +81,12 @@ Parameters:
   AMIUpdateNotificationECSOptimized:
     Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only).'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   AMIUpdateNotificationAmazonLinux:
     Description: 'Receive an alert, if a new Amazon Linux AMI is released (works in us-east-1 only).'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   AMIUpdateNotificationAmazonLinux2:
     Description: 'Receive an alert, if a new Amazon Linux 2 AMI is released (works in us-east-1 only).'
@@ -95,23 +98,38 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  CloudWatchAlarmFired:
+    Description: 'Receive an alert, if any CloudWatch Alarm fires (state ALARM; instead of defining actions for each alarm).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CloudWatchAlarmOrphaned:
+    Description: 'Receive an alert, if any CloudWatch Alarm does not receive any data (state INSUFFICIENT_DATA; instead of defining actions for each alarm).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CloudWatchAlarmAutoClose:
+    Description: 'Auto-Close an alert, if any CloudWatch Alarm fires (state OK; instead of defining actions for each alarm).'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   BatchFailed:
-    Description: 'Receive an alert, if a Batch job fails.'
+    Description: 'Receive an alert, if any Batch job fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CodePipelineFailed:
-    Description: 'Receive an alert, if a CodePipeline execution fails.'
+    Description: 'Receive an alert, if any CodePipeline execution fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CodeBuildFailed:
-    Description: 'Receive an alert, if a CodeBuild build fails.'
+    Description: 'Receive an alert, if any CodeBuild build fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CodeDeployFailed:
-    Description: 'Receive an alert, if a CodeDeploy deployment fails.'
+    Description: 'Receive an alert, if any CodeDeploy deployment fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -121,12 +139,12 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   TrustedAdvisor:
-    Description: 'Receive an alert, if Trusted Advisor checks turn red (works in us-east-1 only, requires AWS Business Support or higher).'
+    Description: 'Receive an alert, if any Trusted Advisor check turns red (works in us-east-1 only, requires AWS Business Support or higher).'
     Type: String
     Default: true
     AllowedValues: [true, false]
   AutoScalingFailed:
-    Description: 'Receive an alert, if an EC2 instance fails to start or terminate in an Auto Scaling Group.'
+    Description: 'Receive an alert, if any EC2 instance fails to start or terminate in an Auto Scaling Group.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -136,27 +154,27 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   EMRFailed:
-    Description: 'Receive an alert, if an EMR step or auto scaling policy fails.'
+    Description: 'Receive an alert, if any EMR step or auto scaling policy fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   EBSFailed:
-    Description: 'Receive an alert, if an EBS snapshot fails.'
+    Description: 'Receive an alert, if any EBS snapshot fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   SSMFailed:
-    Description: 'Receive an alert, if an SSM maintenance window execution fails.'
+    Description: 'Receive an alert, if any SSM maintenance window execution fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   RDSIssue:
-    Description: 'Receive an alert, if an RDS issue is detected.'
+    Description: 'Receive an alert, if any RDS issue is detected.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   GlueJobFailed:
-    Description: 'Receive an alert, if a Glue job fails.'
+    Description: 'Receive an alert, if any Glue job fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -172,6 +190,9 @@ Conditions:
   TrustedAdvisorEnabled: !And [!Condition NorthVirginia, !Equals [!Ref TrustedAdvisor, 'true']]
   # Needs to be created in each region
   RootUserLoginEnabled: !Equals [!Ref RootUserLogin, 'true']
+  CloudWatchAlarmFiredEnabled: !Equals [!Ref CloudWatchAlarmFired, 'true']
+  CloudWatchAlarmOrphanedEnabled: !Equals [!Ref CloudWatchAlarmOrphaned, 'true']
+  CloudWatchAlarmAutoCloseEnabled: !Equals [!Ref CloudWatchAlarmAutoClose, 'true']
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
   CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
   CodeBuildFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
@@ -496,6 +517,63 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  CloudWatchAlarmFiredEvent:
+    Condition: CloudWatchAlarmFiredEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CloudWatch Alarm fired (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.cloudwatch'
+        'detail-type':
+        - 'CloudWatch Alarm State Change'
+        detail:
+          state:
+            value:
+            - ALARM
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  CloudWatchAlarmOrphanedEvent:
+    Condition: CloudWatchAlarmOrphanedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CloudWatch Alarm orphaned (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.cloudwatch'
+        'detail-type':
+        - 'CloudWatch Alarm State Change'
+        detail:
+          state:
+            value:
+            - INSUFFICIENT_DATA
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  CloudWatchAlarmAutoCloseEvent:
+    Condition: CloudWatchAlarmAutoCloseEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CloudWatch Alarm could be auto-closed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.cloudwatch'
+        'detail-type':
+        - 'CloudWatch Alarm State Change'
+        detail:
+          state:
+            value:
+            - OK
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   BatchFailedEvent:
     Condition: BatchFailedEnabled
     DependsOn: TopicEndpointSubscription
@@ -815,7 +893,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.9.0'
+    Value: '1.10.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
