@@ -106,12 +106,12 @@ Parameters:
   CloudWatchAlarmOrphaned:
     Description: 'Receive an alert, if any CloudWatch Alarm does not receive any data (state INSUFFICIENT_DATA; instead of defining actions for each alarm).'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   CloudWatchAlarmAutoClose:
     Description: 'Auto-Close an alert, if any CloudWatch Alarm fires (state OK; instead of defining actions for each alarm).'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   BatchFailed:
     Description: 'Receive an alert, if any Batch job fails.'
