@@ -838,6 +838,7 @@ Resources:
         detail:
           eventType:
           - ERROR
+          - WARN
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
