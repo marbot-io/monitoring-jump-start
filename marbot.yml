@@ -56,6 +56,7 @@ Metadata:
       - GlueJobFailed
       - EC2SpotInstanceInterruption
       - ECSServiceFailed
+      - MacieAlert
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -190,6 +191,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  MacieAlert:
+    Description: 'Receive an alert, if Macie fires an alert.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -219,6 +225,7 @@ Conditions:
   GlueJobFailedEnabled: !Equals [!Ref GlueJobFailed, 'true']
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
+  MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -843,6 +850,21 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  MacieAlertEvent:
+    Condition: MacieAlertEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Alerts from AWS Macie (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.macie'
+        'detail-type':
+        - 'Macie Alert'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -941,7 +963,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.11.1'
+    Value: '1.12.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
