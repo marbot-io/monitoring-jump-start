@@ -58,6 +58,10 @@ Metadata:
       - ECSServiceFailed
       - MacieAlert
       - SecurityHubFinding
+      - OpsWorksDeploymentFailed
+      - OpsWorksCommandFailed
+      - OpsWorksInstanceFailed
+      - OpsWorksAlert
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -202,6 +206,26 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  OpsWorksDeploymentFailed:
+    Description: 'Receive an alert, if any OpsWorks deployment fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  OpsWorksCommandFailed:
+    Description: 'Receive an alert, if any OpsWorks command fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  OpsWorksInstanceFailed:
+    Description: 'Receive an alert, if any OpsWorks instance fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  OpsWorksAlert:
+    Description: 'Receive an alert, if OpsWorks fires an alert.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -233,6 +257,10 @@ Conditions:
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
   SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
+  OpsWorksDeploymentFailedEnabled: !Equals [!Ref OpsWorksDeploymentFailed, 'true']
+  OpsWorksCommandFailedEnabled: !Equals [!Ref OpsWorksCommandFailed, 'true']
+  OpsWorksInstanceFailedEnabled: !Equals [!Ref OpsWorksInstanceFailed, 'true']
+  OpsWorksAlertEnabled: !Equals [!Ref OpsWorksAlert, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -889,6 +917,80 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  OpsWorksDeploymentFailedEvent:
+    Condition: OpsWorksDeploymentFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A OpsWorks deployment failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.opsworks'
+        'detail-type':
+        - 'OpsWorks Deployment State Change'
+        detail:
+          status:
+          - failed
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  OpsWorksCommandFailedEvent:
+    Condition: OpsWorksCommandFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A OpsWorks command failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.opsworks'
+        'detail-type':
+        - 'OpsWorks Command State Change'
+        detail:
+          status:
+          - failed
+          - expired
+          - skipped
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  OpsWorksInstanceFailedEvent:
+    Condition: OpsWorksInstanceFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A OpsWorks instance failed (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.opsworks'
+        'detail-type':
+        - 'OpsWorks Instance State Change'
+        detail:
+          status:
+          - 'connection_lost'
+          - 'setup_failed'
+          - 'start_failed'
+          - 'stop_failed'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  OpsWorksAlertEvent:
+    Condition: OpsWorksAlertEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Alerts from AWS OpsWorks (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.opsworks'
+        'detail-type':
+        - 'OpsWorks Alert'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -987,7 +1089,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.13.0'
+    Value: '1.14.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
