@@ -57,6 +57,7 @@ Metadata:
       - EC2SpotInstanceInterruption
       - ECSServiceFailed
       - MacieAlert
+      - SecurityHubFinding
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -196,6 +197,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  SecurityHubFinding:
+    Description: 'Receive an alert, if a SecurityHub finding is created.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -226,6 +232,7 @@ Conditions:
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
+  SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -712,6 +719,8 @@ Resources:
       EventPattern:
         source:
         - 'aws.guardduty'
+        'detail-type':
+        - 'GuardDuty Finding'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -865,6 +874,21 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  SecurityHubFindingEvent:
+    Condition: SecurityHubFindingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Events (e.g., findings) from AWS SecurityHub (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.securityhub'
+        'detail-type':
+        - 'Security Hub Findings - Imported'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -963,7 +987,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.12.0'
+    Value: '1.13.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
