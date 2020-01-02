@@ -23,6 +23,27 @@ At the moment, you can monitor:
 | [SQS queue](marbot-sqs-queue.yml) | [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-sqs-queue.yml) | `https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-sqs-queue.yml` |
 | [CloudFormation Drift Detection](marbot-cloudformation-drift.yml) | [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-cloudformation-drift.yml) | `https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-cloudformation-drift.yml` |
 
+## Update procedure
+
+To update a Jump Start:
+
+1. Visit the [AWS Management Console](https://console.aws.amazon.com/cloudformation/home#/stacks?filteringText=marbot).
+2. Double-check the selected AWS region.
+3. Search for marbot.
+![Update: step 1](doc/update1.png)
+4. Select a stack and grab the matching **CloudFormation Template URL** from the table above (the **Description** has to match the **Monitoring goal** here!).
+5. Click on **Update**.
+6. Select **Replace current template** and paste the *CloudFormation Template URL* into the **Amazon S3 URL** field.
+![Update: step 2](doc/update2.png)
+7. Click on **Next**.
+8. Scroll to the bottom of the page and click on **Next**.
+9. Once again, scroll to the bottom of the page and click on **Next**.
+10. Scroll to the bottom of the page and select **I acknowledge that AWS CloudFormation might create IAM resources**.
+![Update: step 3](doc/update3.png)
+11. Click on **Update stack**.
+12. Repeat this procedure for every CloudFormation stack that is based on the updated Jump Starts.
+13. If you use more than one AWS region, repeat the procedure for each region.
+
 ## License
 All templates are published under Apache License Version 2.0.
 
