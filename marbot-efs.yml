@@ -109,11 +109,13 @@ Resources:
         Input: !Sub |
           {
             "Type": "monitoring-jump-start-connection",
-            "StackName": "${AWS::StackName}",
             "StackTemplate": "marbot-efs",
             "StackVersion": "1.1.0",
+            "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
-            "Region": "${AWS::Region}"
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
           }
   ##########################################################################
   #                                                                        #
