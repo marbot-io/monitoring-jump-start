@@ -108,6 +108,12 @@ Resources:
         - Sid: Sid1
           Effect: Allow
           Principal:
+            Service: 'events.amazonaws.com' # Allow CloudWatch Events
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+        - Sid: Sid2
+          Effect: Allow
+          Principal:
             AWS: '*' # Allow CloudWatch Alarms
           Action: 'sns:Publish'
           Resource: !Ref Topic
@@ -132,6 +138,25 @@ Resources:
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
+  MonitoringJumpStartEvent:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection (created by marbot).'
+      ScheduleExpression: 'rate(7 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackName": "${AWS::StackName}",
+            "StackTemplate": "marbot-ec2-instances",
+            "StackVersion": "2.1.1",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}"
+          }
   ##########################################################################
   #                                                                        #
   #                                 ALARMS                                 #
