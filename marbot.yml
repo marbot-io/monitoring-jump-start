@@ -62,6 +62,7 @@ Metadata:
       - OpsWorksCommandFailed
       - OpsWorksInstanceFailed
       - OpsWorksAlert
+      - ECRIMageScanFinding
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -226,6 +227,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  ECRIMageScanFinding:
+    Description: 'Receive an alert, if a ECR Image Scan finding of severity MEDIUM, HIGH, or CRITICAL is created.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -261,6 +267,7 @@ Conditions:
   OpsWorksCommandFailedEnabled: !Equals [!Ref OpsWorksCommandFailed, 'true']
   OpsWorksInstanceFailedEnabled: !Equals [!Ref OpsWorksInstanceFailed, 'true']
   OpsWorksAlertEnabled: !Equals [!Ref OpsWorksAlert, 'true']
+  ECRIMageScanFindingEnabled: !Equals [!Ref ECRIMageScanFinding, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -338,7 +345,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.14.0",
+            "StackVersion": "1.15.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1012,6 +1019,21 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  ECRIMageScanFindingEvent:
+    Condition: ECRIMageScanFindingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Findings from AWS ECR Image Scans (created by marbot).'
+      EventPattern: # a pattern that filters on severity is not possible https://github.com/aws/containers-roadmap/issues/565
+        source:
+        - 'aws.ecr'
+        'detail-type':
+        - 'ECR Image Scan'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -1110,7 +1132,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.14.0'
+    Value: '1.15.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
