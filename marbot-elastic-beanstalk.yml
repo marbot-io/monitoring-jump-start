@@ -105,7 +105,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-elastic-beanstalk",
-            "StackVersion": "1.2.1",
+            "StackVersion": "1.2.2",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -145,18 +145,22 @@ Resources:
               return new Promise(resolve => setTimeout(resolve, ms));
             };
             const wait = (applicationName, environmentName) => {
-              return elasticbeanstalk.describeEnvironmentHealth({
-                EnvironmentName: environmentName,
-                AttributeNames: ['Status', 'Color', 'Causes', 'HealthStatus', 'RefreshedAt']
+              return elasticbeanstalk.describeEnvironments({
+                ApplicationName: applicationName,
+                EnvironmentNames: [environmentName]
               }).promise()
                 .then((data) => {
-                  if (data.Status === 'Ready') {
-                    return data;
-                  } else if (data.Status === 'Updating'){
-                    debug(data);
-                    return sleep(5000).then(() => wait(applicationName, environmentName));
+                  if (data.Environments.length === 1) {
+                    if (data.Environments[0].Status === 'Ready') {
+                      return data.Environments[0];
+                    } else if (data.Environments[0].Status === 'Updating'){
+                      debug(data.Environments[0]);
+                      return sleep(5000).then(() => wait(applicationName, environmentName));
+                    } else {
+                      throw new Error(`Unexpected status: ${data.Environments[0].Status}`);
+                    }
                   } else {
-                    throw new Error(`Unexpected status: ${data.Status}`);
+                    throw new Error(`Environment not found`);
                   }
                 });
             }
@@ -245,4 +249,4 @@ Outputs:
     Value: 'marbot-elastic-beanstalk'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.2.1'
+    Value: '1.2.2'
