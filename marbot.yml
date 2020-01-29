@@ -345,7 +345,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.15.0",
+            "StackVersion": "1.16.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -842,13 +842,6 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::RDS::EventSubscription'
     Properties:
-      EventCategories:
-      - failover
-      - failure
-      - 'low storage'
-      - maintenance
-      - notification
-      - recovery
       SnsTopicArn: !Ref Topic
       SourceType: 'db-instance'
   RDSClusterIssue:
@@ -856,10 +849,6 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::RDS::EventSubscription'
     Properties:
-      EventCategories:
-      - failover
-      - failure
-      - notification
       SnsTopicArn: !Ref Topic
       SourceType: 'db-cluster'
   GlueJobFailedEvent:
@@ -1132,7 +1121,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.15.0'
+    Value: '1.16.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
