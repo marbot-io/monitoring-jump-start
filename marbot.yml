@@ -24,20 +24,11 @@ Metadata:
       - Stage
       - Test
     - Label:
-        default: 'Alarms'
+        default: 'Alerts'
       Parameters:
       - BillingThreshold
       - BudgetThreshold
       - TrustedAdvisor
-    - Label:
-        default: 'Subscriptions'
-      Parameters:
-      - AMIUpdateNotificationECSOptimized
-      - AMIUpdateNotificationAmazonLinux
-      - AMIUpdateNotificationAmazonLinux2
-    - Label:
-        default: 'Events'
-      Parameters:
       - RootUserLogin
       - CloudWatchAlarmFired
       - CloudWatchAlarmOrphaned
@@ -63,6 +54,13 @@ Metadata:
       - OpsWorksInstanceFailed
       - OpsWorksAlert
       - ECRIMageScanFinding
+    - Label:
+        default: 'Notifications'
+      Parameters:
+      - CodePipelineNotifications
+      - AMIUpdateNotificationECSOptimized
+      - AMIUpdateNotificationAmazonLinux
+      - AMIUpdateNotificationAmazonLinux2
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -129,6 +127,11 @@ Parameters:
     AllowedValues: [true, false]
   CodePipelineFailed:
     Description: 'Receive an alert, if any CodePipeline execution fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodePipelineNotifications:
+    Description: 'Receive a notification, if a CodePipeline stage succeedes.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -249,6 +252,7 @@ Conditions:
   CloudWatchAlarmAutoCloseEnabled: !Equals [!Ref CloudWatchAlarmAutoClose, 'true']
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
   CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
+  CodePipelineNotificationsEnabled: !Equals [!Ref CodePipelineNotifications, 'true']
   CodeBuildFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
   CodeDeployFailedEnabled: !Equals [!Ref CodeDeployFailed, 'true']
   HealthIssueEnabled: !Equals [!Ref HealthIssue, 'true']
@@ -345,7 +349,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.16.0",
+            "StackVersion": "1.17.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -690,6 +694,24 @@ Resources:
         detail:
           state:
           - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  CodePipelineNotificationsEvent:
+    Condition: CodePipelineNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'CodePipeline notifications (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.codepipeline'
+        'detail-type':
+        - 'CodePipeline Stage Execution State Change'
+        detail:
+          state:
+          - SUCCEEDED
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -1121,7 +1143,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.16.0'
+    Value: '1.17.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
