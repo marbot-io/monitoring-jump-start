@@ -1049,6 +1049,10 @@ Resources:
         - 'aws.ecr'
         'detail-type':
         - 'ECR Image Scan'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   DLMPolicyAlertEvent:
     Condition: DLMPolicyAlertEnabled
     DependsOn: TopicEndpointSubscription
