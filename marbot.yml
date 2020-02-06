@@ -54,6 +54,7 @@ Metadata:
       - OpsWorksInstanceFailed
       - OpsWorksAlert
       - ECRIMageScanFinding
+      - DLMPolicyAlert
     - Label:
         default: 'Notifications'
       Parameters:
@@ -235,6 +236,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  DLMPolicyAlert:
+    Description: 'Receive an alert, if a DLM policy fires an alert.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -272,6 +278,7 @@ Conditions:
   OpsWorksInstanceFailedEnabled: !Equals [!Ref OpsWorksInstanceFailed, 'true']
   OpsWorksAlertEnabled: !Equals [!Ref OpsWorksAlert, 'true']
   ECRIMageScanFindingEnabled: !Equals [!Ref ECRIMageScanFinding, 'true']
+  DLMPolicyAlertEnabled: !Equals [!Ref DLMPolicyAlert, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -349,7 +356,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.17.0",
+            "StackVersion": "1.18.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -833,6 +840,7 @@ Resources:
         - 'aws.ec2'
         'detail-type':
         - 'EBS Snapshot Notification'
+        - 'EBS Multi-Volume Snapshots Completion Status'
         detail:
           result:
           - failed
@@ -1041,6 +1049,20 @@ Resources:
         - 'aws.ecr'
         'detail-type':
         - 'ECR Image Scan'
+  DLMPolicyAlertEvent:
+    Condition: DLMPolicyAlertEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Alerts from Amazon Data Lifecycle Manager (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.dlm'
+        'detail-type':
+        - 'DLM Policy State Change'
+        detail:
+          state:
+          - ERROR
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -1143,7 +1165,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.17.0'
+    Value: '1.18.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
