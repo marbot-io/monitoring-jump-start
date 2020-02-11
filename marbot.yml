@@ -53,7 +53,7 @@ Metadata:
       - OpsWorksCommandFailed
       - OpsWorksInstanceFailed
       - OpsWorksAlert
-      - ECRIMageScanFinding
+      - ECRImageScanFinding
       - DLMPolicyAlert
     - Label:
         default: 'Notifications'
@@ -132,7 +132,7 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   CodePipelineNotifications:
-    Description: 'Receive a notification, if a CodePipeline stage succeedes.'
+    Description: 'Receive a notification, if a CodePipeline pipeline succeedes.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -212,17 +212,17 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   OpsWorksDeploymentFailed:
-    Description: 'Receive an alert, if any OpsWorks deployment fails.'
+    Description: 'Receive an alert, if an OpsWorks deployment fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   OpsWorksCommandFailed:
-    Description: 'Receive an alert, if any OpsWorks command fails.'
+    Description: 'Receive an alert, if an OpsWorks command fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   OpsWorksInstanceFailed:
-    Description: 'Receive an alert, if any OpsWorks instance fails.'
+    Description: 'Receive an alert, if an OpsWorks instance fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -231,7 +231,7 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
-  ECRIMageScanFinding:
+  ECRImageScanFinding:
     Description: 'Receive an alert, if a ECR Image Scan finding of severity MEDIUM, HIGH, or CRITICAL is created.'
     Type: String
     Default: true
@@ -277,7 +277,7 @@ Conditions:
   OpsWorksCommandFailedEnabled: !Equals [!Ref OpsWorksCommandFailed, 'true']
   OpsWorksInstanceFailedEnabled: !Equals [!Ref OpsWorksInstanceFailed, 'true']
   OpsWorksAlertEnabled: !Equals [!Ref OpsWorksAlert, 'true']
-  ECRIMageScanFindingEnabled: !Equals [!Ref ECRIMageScanFinding, 'true']
+  ECRImageScanFindingEnabled: !Equals [!Ref ECRImageScanFinding, 'true']
   DLMPolicyAlertEnabled: !Equals [!Ref DLMPolicyAlert, 'true']
 Resources:
   ##########################################################################
@@ -589,6 +589,7 @@ Resources:
           IncludeRecurring: false
           UseAmortized: false
           IncludeRefund: false
+          UseBlended: false
         BudgetType: COST
   ##########################################################################
   #                                                                        #
@@ -715,7 +716,7 @@ Resources:
         source:
         - 'aws.codepipeline'
         'detail-type':
-        - 'CodePipeline Stage Execution State Change'
+        - 'CodePipeline Pipeline Execution State Change'
         detail:
           state:
           - SUCCEEDED
@@ -800,7 +801,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Events (e.g., findings) from AWS GuardDuty (created by marbot).'
+      Description: 'Findings from AWS GuardDuty (created by marbot).'
       EventPattern:
         source:
         - 'aws.guardduty'
@@ -848,7 +849,7 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
-  SSMFailedEnabled:
+  SSMFailed:
     Condition: SSMFailedEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
@@ -954,7 +955,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Events (e.g., findings) from AWS SecurityHub (created by marbot).'
+      Description: 'Findings from AWS SecurityHub (created by marbot).'
       EventPattern:
         source:
         - 'aws.securityhub'
@@ -969,7 +970,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A OpsWorks deployment failed (created by marbot).'
+      Description: 'An OpsWorks deployment failed (created by marbot).'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -987,7 +988,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A OpsWorks command failed (created by marbot).'
+      Description: 'An OpsWorks command failed (created by marbot).'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -1007,7 +1008,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A OpsWorks instance failed (created by marbot).'
+      Description: 'An OpsWorks instance failed (created by marbot).'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -1038,8 +1039,8 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
-  ECRIMageScanFindingEvent:
-    Condition: ECRIMageScanFindingEnabled
+  ECRImageScanFindingEvent:
+    Condition: ECRImageScanFindingEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
