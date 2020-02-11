@@ -849,7 +849,7 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
-  SSMFailed:
+  SSMFailedEvent:
     Condition: SSMFailedEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
