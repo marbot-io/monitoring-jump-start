@@ -55,6 +55,7 @@ Metadata:
       - OpsWorksAlert
       - ECRImageScanFinding
       - DLMPolicyAlert
+      - IoTAnalyticsDatasetAlert
     - Label:
         default: 'Notifications'
       Parameters:
@@ -241,6 +242,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  IoTAnalyticsDatasetAlert:
+    Description: 'Receive an alert, if an IoT Analytics dataset fires an alert.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -279,6 +285,7 @@ Conditions:
   OpsWorksAlertEnabled: !Equals [!Ref OpsWorksAlert, 'true']
   ECRImageScanFindingEnabled: !Equals [!Ref ECRImageScanFinding, 'true']
   DLMPolicyAlertEnabled: !Equals [!Ref DLMPolicyAlert, 'true']
+  IoTAnalyticsDatasetAlertEnabled: !Equals [!Ref IoTAnalyticsDatasetAlert, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -356,7 +363,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.18.0",
+            "StackVersion": "1.19.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1072,6 +1079,24 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  IoTAnalyticsDatasetAlertEvent:
+    Condition: IoTAnalyticsDatasetAlertEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Alerts from IoT Analytics dataset (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.iotanalytics'
+        'detail-type':
+        - 'IoT Analytics Dataset Lifecycle Notification'
+        detail:
+          state:
+          - CONTENT_DELIVERY_FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -1170,7 +1195,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.18.0'
+    Value: '1.19.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
