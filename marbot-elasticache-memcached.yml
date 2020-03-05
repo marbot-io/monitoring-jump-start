@@ -114,7 +114,7 @@ Resources:
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection (created by marbot).'
-      ScheduleExpression: 'rate(7 days)'
+      ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -123,7 +123,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-elasticache-memcached",
-            "StackVersion": "1.3.1",
+            "StackVersion": "1.4.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -211,7 +211,7 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const response = require('./cfn-response');
+          const response = require('cfn-response');
           const AWS = require('aws-sdk');
           const elasticache = new AWS.ElastiCache({apiVersion: '2015-02-02'});
           exports.handler = (event, context, cb) => {
@@ -311,7 +311,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'CustomNotificationTopicConfigurationRole.Arn'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       Timeout: 10
   CustomNotificationTopicConfigurationRole:
     Type: 'AWS::IAM::Role'
@@ -343,4 +343,4 @@ Outputs:
     Value: 'marbot-elasticache-memcached'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.3.1'
+    Value: '1.4.0'

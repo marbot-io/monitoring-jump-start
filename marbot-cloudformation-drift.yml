@@ -83,7 +83,7 @@ Resources:
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection (created by marbot).'
-      ScheduleExpression: 'rate(7 days)'
+      ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -92,7 +92,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-cloudformation-drift",
-            "StackVersion": "1.1.0",
+            "StackVersion": "1.2.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -425,7 +425,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleTrigger.Arn'
@@ -470,7 +470,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDriftStatus.Arn'
@@ -494,7 +494,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleStartDriftDetection.Arn'
@@ -516,7 +516,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDetectionStatus.Arn'
@@ -538,7 +538,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleSendDriftNotification.Arn'
@@ -578,4 +578,4 @@ Outputs:
     Value: 'marbot-cloudformation-drift'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.0'
+    Value: '1.2.0'

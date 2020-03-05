@@ -115,7 +115,7 @@ Resources:
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection (created by marbot).'
-      ScheduleExpression: 'rate(7 days)'
+      ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -124,7 +124,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-ec2-instance",
-            "StackVersion": "2.1.1",
+            "StackVersion": "2.2.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -379,7 +379,7 @@ Resources:
           'use strict';
           const https = require('https');
           const AWS = require('aws-sdk');
-          const response = require('./cfn-response');
+          const response = require('cfn-response');
           const ec2 = new AWS.EC2({apiVersion: '2016-11-15'});
           function getData(cb) {
             https.get('https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json', (res) => {
@@ -455,7 +455,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'LambdaRole.Arn'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       Timeout: 60
   LambdaLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -471,4 +471,4 @@ Outputs:
     Value: 'marbot-ec2-instance'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.1.1'
+    Value: '2.2.0'

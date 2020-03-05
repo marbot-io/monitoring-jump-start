@@ -354,7 +354,7 @@ Resources:
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection (created by marbot).'
-      ScheduleExpression: 'rate(7 days)'
+      ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -363,7 +363,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.19.0",
+            "StackVersion": "1.20.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1127,7 +1127,7 @@ Resources:
           'use strict';
           const https = require('https');
           const querystring = require('querystring');
-          const response = require('./cfn-response');
+          const response = require('cfn-response');
           exports.handler = (event, context, cb) => {
             console.log(JSON.stringify(event));
             if (event.RequestType === 'Create' || event.RequestType === 'Update') {
@@ -1164,7 +1164,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'TestAlertFunctionRole.Arn'
-      Runtime: 'nodejs10.x'
+      Runtime: 'nodejs12.x'
       Timeout: 30
   TestAlertFunctionRole:
     Condition: TestEnabled
@@ -1195,7 +1195,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.19.0'
+    Value: '1.20.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'

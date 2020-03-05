@@ -44,15 +44,18 @@ Parameters:
     Description: 'The SQS queue name that you want to monitor.'
     Type: String
   ApproximateAgeOfOldestMessageThreshold:
-    Description: 'The maximum age (in seconds) of a message in the queue.'
+    Description: 'The maximum age (in seconds) of a message in the queue (set to 0 to disable).'
     Type: Number
     Default: 600 # 10 minutes
     MinValue: 0
   ApproximateNumberOfMessagesVisibleThreshold:
-    Description: 'The maximum number of messages in the queue waiting for processing.'
+    Description: 'The maximum number of messages in the queue waiting for processing (set to 0 to disable).'
     Type: Number
     Default: 10
     MinValue: 0
+Conditions:
+  HasApproximateAgeOfOldestMessageThreshold: !Not [!Equals [!Ref ApproximateAgeOfOldestMessageThreshold, '0']]
+  HasApproximateNumberOfMessagesVisibleThreshold: !Not [!Equals [!Ref ApproximateNumberOfMessagesVisibleThreshold, '0']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -107,7 +110,7 @@ Resources:
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection (created by marbot).'
-      ScheduleExpression: 'rate(7 days)'
+      ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -116,7 +119,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-sqs-queue",
-            "StackVersion": "1.1.0",
+            "StackVersion": "1.2.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -129,6 +132,7 @@ Resources:
   #                                                                        #
   ##########################################################################
   ApproximateAgeOfOldestMessageAlarm:
+    Condition: HasApproximateAgeOfOldestMessageThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
@@ -149,6 +153,7 @@ Resources:
       Threshold: !Ref ApproximateAgeOfOldestMessageThreshold
       TreatMissingData: notBreaching
   ApproximateNumberOfMessagesVisibleAlarm:
+    Condition: HasApproximateNumberOfMessagesVisibleThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
@@ -177,4 +182,4 @@ Outputs:
     Value: 'marbot-sqs-queue'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.0'
+    Value: '1.2.0'
