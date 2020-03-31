@@ -31,6 +31,8 @@ Metadata:
       Parameters:
       - CPUUtilizationThreshold
       - CPUCreditBalanceThreshold
+      - EBSIOCreditBalanceThreshold
+      - EBSThroughputCreditBalanceThreshold
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -44,16 +46,33 @@ Parameters:
     Description: 'The name of the Auto Scaling Group that you want to monitor.'
     Type: 'String'
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU utilization.'
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Description: 'The minimum number of CPU credits available (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
+  EBSIOCreditBalanceThreshold:
+    Description: 'The minimum percentage of I/O credits remaining in the burst bucket (smaller instance only; set to -1 to disable).'
+    Type: Number
+    Default: 20
+    MinValue: -1
+    MaxValue: 100
+  EBSThroughputCreditBalanceThreshold:
+    Description: 'The minimum percentage of throughput credits remaining in the burst bucket (smaller instance only; set to -1 to disable).'
+    Type: Number
+    Default: 20
+    MinValue: -1
+    MaxValue: 100
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasEBSIOCreditBalanceThreshold: !Not [!Equals [!Ref EBSIOCreditBalanceThreshold, '-1']]
+  HasEBSThroughputCreditBalanceThreshold: !Not [!Equals [!Ref EBSThroughputCreditBalanceThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -130,6 +149,7 @@ Resources:
   #                                                                        #
   ##########################################################################
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
@@ -148,7 +168,9 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
+      TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
+    Condition: HasCPUCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
@@ -167,6 +189,68 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUCreditBalanceThreshold
+      TreatMissingData: notBreaching
+  EBSIOCreditBalanceTooLowAlarm:
+    Condition: HasEBSIOCreditBalanceThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average EBS IO credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref AutoScalingGroupName
+      EvaluationPeriods: 1
+      MetricName: 'EBSIOBalance%'
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref EBSIOCreditBalanceThreshold
+      TreatMissingData: notBreaching
+  EBSThroughputCreditBalanceTooLowAlarm:
+    Condition: HasEBSThroughputCreditBalanceThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average EBS throughput credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value: !Ref AutoScalingGroupName
+      EvaluationPeriods: 1
+      MetricName: 'EBSByteBalance%'
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref EBSThroughputCreditBalanceThreshold
+      TreatMissingData: notBreaching
+  # TODO add network in+out
+  UnsuccessfulEvent:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'EC2 Auto Scaling failed to launch or terminate an instance (created by marbot).'
+      EventPattern:
+        source:
+        - 'aws.autoscaling'
+        'detail-type':
+        - 'EC2 Instance Launch Unsuccessful'
+        - 'EC2 Instance Terminate Unsuccessful'
+        detail:
+          AutoScalingGroupName:
+          - !Ref AutoScalingGroupName
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -176,4 +260,4 @@ Outputs:
     Value: 'marbot-auto-scaling-group'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.0'
+    Value: '1.2.0'
