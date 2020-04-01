@@ -233,6 +233,11 @@ Resources:
       Threshold: !Ref EBSThroughputCreditBalanceThreshold
       TreatMissingData: notBreaching
   # TODO add network in+out
+  ##########################################################################
+  #                                                                        #
+  #                                 EVENTS                                 #
+  #                                                                        #
+  ##########################################################################
   UnsuccessfulEvent:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
