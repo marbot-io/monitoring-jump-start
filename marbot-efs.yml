@@ -43,10 +43,12 @@ Parameters:
     Description: 'The EFS file system ID that you want to monitor.'
     Type: String
   BurstCreditBalanceThreshold:
-    Description: 'The minimum number of burst credits that a file system should have.'
+    Description: 'The minimum number of burst credits that a file system should have (set to -1 to disable).'
     Type: Number
     Default: 192000000000 # 192 GB in Bytes (last hour where you can burst at 100 MB/sec)
-    MinValue: 0
+    MinValue: -1
+Conditions:
+  HasBurstCreditBalanceThreshold: !Not [!Equals [!Ref BurstCreditBalanceThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -100,7 +102,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -123,12 +125,13 @@ Resources:
   #                                                                        #
   ##########################################################################
   BurstCreditBalanceTooLowAlarm:
+    Condition: HasBurstCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average burst credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average burst credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: FileSystemId
@@ -147,7 +150,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'I/O limit has been reached, consider using Max I/O performance mode (created by marbot).'
+      AlarmDescription: 'I/O limit has been reached, consider using Max I/O performance mode. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: FileSystemId

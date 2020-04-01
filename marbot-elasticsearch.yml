@@ -49,44 +49,52 @@ Parameters:
     Description: 'The domain name of the Elasticsearch domain that you want to monitor.'
     Type: String
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU resources used for data nodes in the cluster.'
+    Description: 'The maximum percentage of CPU resources used for data nodes in the cluster (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits used for data nodes in the cluster (t2 instances only).'
+    Description: 'The minimum number of CPU credits used for data nodes in the cluster (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   MasterCPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU resources used for master nodes in the cluster.'
+    Description: 'The maximum percentage of CPU resources used for master nodes in the cluster (set to -1 to disable).'
     Type: Number
     Default: 50
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   MasterCPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits used for master nodes in the cluster (t2 instances only).'
+    Description: 'The minimum number of CPU credits used for master nodes in the cluster (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   FreeStorageSpaceThreshold:
-    Description: 'The minimum amount of available storage space in the cluster in Megabyte.'
+    Description: 'The minimum amount of available storage space in the cluster in Megabyte (set to -1 to disable).'
     Type: Number
     Default: 2000 # 2 Gigabyte in Megabyte
-    MinValue: 0
+    MinValue: -1
   JVMMemoryPressureThreshold:
-    Description: 'The maximum percentage of the Java heap used for all data nodes in the cluster.'
+    Description: 'The maximum percentage of the Java heap used for all data nodes in the cluster (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   MasterJVMMemoryPressureThreshold:
-    Description: 'The maximum percentage of the Java heap used for all master nodes in the cluster.'
+    Description: 'The maximum percentage of the Java heap used for all master nodes in the cluster (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasMasterCPUUtilizationThreshold: !Not [!Equals [!Ref MasterCPUUtilizationThreshold, '-1']]
+  HasMasterCPUCreditBalanceThreshold: !Not [!Equals [!Ref MasterCPUCreditBalanceThreshold, '-1']]
+  HasFreeStorageSpaceThreshold: !Not [!Equals [!Ref FreeStorageSpaceThreshold, '-1']]
+  HasJVMMemoryPressureThreshold: !Not [!Equals [!Ref JVMMemoryPressureThreshold, '-1']]
+  HasMasterJVMMemoryPressureThreshold: !Not [!Equals [!Ref MasterJVMMemoryPressureThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -140,7 +148,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -168,7 +176,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Replica shards for at least one index are not allocated to nodes in a cluster (created by marbot).'
+      AlarmDescription: 'Replica shards for at least one index are not allocated to nodes in a cluster. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -189,7 +197,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Primary and replica shards of at least one index are not allocated to nodes in a cluster (created by marbot).'
+      AlarmDescription: 'Primary and replica shards of at least one index are not allocated to nodes in a cluster. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -205,12 +213,13 @@ Resources:
       Statistic: Maximum
       Threshold: 0
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -226,12 +235,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
   CPUCreditBalanceTooLowAlarm:
+    Condition: HasCPUCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: ClientId
@@ -247,12 +257,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref CPUCreditBalanceThreshold
   MasterCPUUtilizationTooHighAlarm:
+    Condition: HasMasterCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -268,12 +279,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref MasterCPUUtilizationThreshold
   MasterCPUCreditBalanceTooLowAlarm:
+    Condition: HasMasterCPUCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: ClientId
@@ -289,12 +301,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref MasterCPUCreditBalanceThreshold
   FreeStorageSpaceTooLowAlarm:
+    Condition: HasFreeStorageSpaceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Cluster is running out of storage space (created by marbot).'
+      AlarmDescription: 'Cluster is running out of storage space. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: ClientId
@@ -315,7 +328,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Cluster is blocking incoming write requests (created by marbot).'
+      AlarmDescription: 'Cluster is blocking incoming write requests. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -331,12 +344,13 @@ Resources:
       Statistic: Maximum
       Threshold: 0
   JVMMemoryPressureTooHighAlarm:
+    Condition: HasJVMMemoryPressureThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average JVM memory pressure over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average JVM memory pressure over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -352,12 +366,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref JVMMemoryPressureThreshold
   MasterJVMMemoryPressureTooHighAlarm:
+    Condition: HasMasterJVMMemoryPressureThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average JVM memory pressure over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average JVM memory pressure over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -378,7 +393,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Master node stopped or not reachable. Usually the result of a network connectivity issue or AWS dependency problem (created by marbot).'
+      AlarmDescription: 'Master node stopped or not reachable. Usually the result of a network connectivity issue or AWS dependency problem. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: ClientId
@@ -399,7 +414,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'No automated snapshot was taken for the domain in the previous 36 hours (created by marbot).'
+      AlarmDescription: 'No automated snapshot was taken for the domain in the previous 36 hours. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -420,7 +435,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Kibana is inaccessible (created by marbot).'
+      AlarmDescription: 'Kibana is inaccessible. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: ClientId
@@ -441,7 +456,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'KMS customer master key used to encrypt data at rest has been disabled (created by marbot).'
+      AlarmDescription: 'KMS customer master key used to encrypt data at rest has been disabled. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId
@@ -462,7 +477,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'KMS customer master key used to encrypt data at rest has been deleted or revoked its grants to Amazon ES (created by marbot).'
+      AlarmDescription: 'KMS customer master key used to encrypt data at rest has been deleted or revoked its grants to Amazon ES. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: ClientId

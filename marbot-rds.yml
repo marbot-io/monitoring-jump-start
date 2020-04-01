@@ -55,36 +55,44 @@ Parameters:
     MinValue: 0
     MaxValue: 100
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU utilization.'
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Description: 'The minimum number of CPU credits available (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   DiskQueueDepthThreshold:
-    Description: 'The maximum number of outstanding IOs (read/write requests) waiting to access the disk.'
+    Description: 'The maximum number of outstanding IOs (read/write requests) waiting to access the disk (set to -1 to disable).'
     Type: Number
     Default: 64
-    MinValue: 0
+    MinValue: -1
   FreeableMemoryThreshold:
-    Description: 'The minimum amount of available random access memory in Byte.'
+    Description: 'The minimum amount of available random access memory in Byte (set to -1 to disable).'
     Type: Number
     Default: 64000000 # 64 Megabyte in Byte
-    MinValue: 0
+    MinValue: -1
   FreeStorageSpaceThreshold:
-    Description: 'The minimum amount of available storage space in Byte.'
+    Description: 'The minimum amount of available storage space in Byte (set to -1 to disable).'
     Type: Number
     Default: 2000000000 # 2 Gigabyte in Byte
-    MinValue: 0
+    MinValue: -1
   SwapUsageThreshold:
-    Description: 'The maximum amount of swap space used on the DB instance in Byte.'
+    Description: 'The maximum amount of swap space used on the DB instance in Byte (set to -1 to disable).'
     Type: Number
     Default: 256000000 # 256 Megabyte in Byte
-    MinValue: 0
+    MinValue: -1
+Conditions:
+  HasBurstBalanceThreshold: !Not [!Equals [!Ref BurstBalanceThreshold, '-1']]
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasDiskQueueDepthThreshold: !Not [!Equals [!Ref DiskQueueDepthThreshold, '-1']]
+  HasFreeableMemoryThreshold: !Not [!Equals [!Ref FreeableMemoryThreshold, '-1']]
+  HasFreeStorageSpaceThreshold: !Not [!Equals [!Ref FreeStorageSpaceThreshold, '-1']]
+  HasSwapUsageThreshold: !Not [!Equals [!Ref SwapUsageThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -140,7 +148,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -163,12 +171,13 @@ Resources:
   #                                                                        #
   ##########################################################################
   BurstBalanceTooLowAlarm:
+    Condition: HasBurstBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database storage burst balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average database storage burst balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
@@ -183,12 +192,13 @@ Resources:
       Threshold: !Ref BurstBalanceThreshold
       TreatMissingData: notBreaching
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average database CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
@@ -203,12 +213,13 @@ Resources:
       Threshold: !Ref CPUUtilizationThreshold
       TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
+    Condition: HasCPUCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average database CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
@@ -223,12 +234,13 @@ Resources:
       Threshold: !Ref CPUCreditBalanceThreshold
       TreatMissingData: notBreaching
   DiskQueueDepthTooHighAlarm:
+    Condition: HasDiskQueueDepthThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database disk queue depth over last 10 minutes too high, performance may suffer (created by marbot).'
+      AlarmDescription: 'Average database disk queue depth over last 10 minutes too high, performance may suffer. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
@@ -243,12 +255,13 @@ Resources:
       Threshold: !Ref DiskQueueDepthThreshold
       TreatMissingData: notBreaching
   FreeableMemoryTooLowAlarm:
+    Condition: HasFreeableMemoryThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database freeable memory over last 10 minutes too low, performance may suffer (created by marbot).'
+      AlarmDescription: 'Average database freeable memory over last 10 minutes too low, performance may suffer. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
@@ -263,12 +276,13 @@ Resources:
       Threshold: !Ref FreeableMemoryThreshold
       TreatMissingData: notBreaching
   FreeStorageSpaceTooLowAlarm:
+    Condition: HasFreeStorageSpaceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database free storage space over last 10 minutes too low (created by marbot).'
+      AlarmDescription: 'Average database free storage space over last 10 minutes too low. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
@@ -283,12 +297,13 @@ Resources:
       Threshold: !Ref FreeStorageSpaceThreshold
       TreatMissingData: notBreaching
   SwapUsageTooHighAlarm:
+    Condition: HasSwapUsageThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database swap usage over last 10 minutes too high, performance may suffer (created by marbot).'
+      AlarmDescription: 'Average database swap usage over last 10 minutes too high, performance may suffer. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier

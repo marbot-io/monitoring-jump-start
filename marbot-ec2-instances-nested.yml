@@ -26,17 +26,21 @@ Parameters:
   CPUUtilizationThreshold:
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   NetworkUtilizationThreshold:
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasNetworkUtilizationThreshold: !Not [!Equals [!Ref NetworkUtilizationThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -44,11 +48,12 @@ Resources:
   #                                                                        #
   ##########################################################################
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: InstanceId
@@ -63,11 +68,12 @@ Resources:
       Threshold: !Ref CPUUtilizationThreshold
       TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
+    Condition: HasCPUCreditBalanceThreshold
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: InstanceId
@@ -86,7 +92,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      AlarmDescription: 'EC2 instance status check or the system status check has failed. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: InstanceId
@@ -101,11 +107,12 @@ Resources:
       Threshold: 0
       TreatMissingData: notBreaching
   NetworkBurstUtilizationTooHighAlarm:
+    Condition: HasNetworkUtilizationThreshold
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -144,11 +151,12 @@ Resources:
       Threshold: !GetAtt 'InstanceDetails.NetworkBurst' # in Gbit/s
       TreatMissingData: notBreaching
   NetworkBaselineUtilizationTooHighAlarm:
+    Condition: HasNetworkUtilizationThreshold
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst (created by marbot).'
+      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -187,11 +195,12 @@ Resources:
       Threshold: !GetAtt 'InstanceDetails.NetworkBaseline' # in Gbit/s
       TreatMissingData: notBreaching
   NetworkUtilizationTooHighAlarm:
+    Condition: HasNetworkUtilizationThreshold
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -236,13 +245,3 @@ Resources:
       InstanceId: !Ref InstanceId
       NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       ServiceToken: !Ref CustomResourceLambda
-Outputs:
-  StackName:
-    Description: 'Stack name.'
-    Value: !Sub '${AWS::StackName}'
-  StackTemplate:
-    Description: 'Stack template.'
-    Value: 'marbot-ec2-instances-nested'
-  StackVersion:
-    Description: 'Stack version.'
-    Value: '2.0.0'

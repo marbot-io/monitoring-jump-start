@@ -52,21 +52,21 @@ Parameters:
     MinValue: 1
     MaxValue: 10
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU utilization.'
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Description: 'The minimum number of CPU credits available (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   NetworkUtilizationThreshold:
-    Description: 'The maximum percentage of network utilization.'
+    Description: 'The maximum percentage of network utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
 Conditions:
   Has1: !Equals [!Ref NumberOfInstanceIds, 1]
@@ -142,7 +142,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:

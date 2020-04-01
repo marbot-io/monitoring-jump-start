@@ -402,7 +402,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Trusted Advisor Cost Optimization checks are red (created by marbot).'
+      AlarmDescription: 'Trusted Advisor Cost Optimization checks are red. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: Category
@@ -422,7 +422,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Trusted Advisor Fault Tolerance checks are red (created by marbot).'
+      AlarmDescription: 'Trusted Advisor Fault Tolerance checks are red. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: Category
@@ -442,7 +442,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Trusted Advisor Performance checks are red (created by marbot).'
+      AlarmDescription: 'Trusted Advisor Performance checks are red. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: Category
@@ -462,7 +462,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Trusted Advisor Security checks are red (created by marbot).'
+      AlarmDescription: 'Trusted Advisor Security checks are red. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: Category
@@ -482,7 +482,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Trusted Advisor Service Limits checks are red (created by marbot).'
+      AlarmDescription: 'Trusted Advisor Service Limits checks are red. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: Category
@@ -608,7 +608,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A root user login was detected, better use IAM users instead (created by marbot).'
+      Description: 'A root user login was detected, better use IAM users instead. (created by marbot)'
       EventPattern:
         'detail-type':
         - 'AWS Console Sign In via CloudTrail'
@@ -625,7 +625,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A CloudWatch Alarm fired (created by marbot).'
+      Description: 'A CloudWatch Alarm fired. (created by marbot)'
       EventPattern:
         source:
         - 'aws.cloudwatch'
@@ -644,7 +644,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A CloudWatch Alarm orphaned (created by marbot).'
+      Description: 'A CloudWatch Alarm orphaned. (created by marbot)'
       EventPattern:
         source:
         - 'aws.cloudwatch'
@@ -663,7 +663,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A CloudWatch Alarm could be auto-closed (created by marbot).'
+      Description: 'A CloudWatch Alarm could be auto-closed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.cloudwatch'
@@ -682,7 +682,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A Batch job failed (created by marbot).'
+      Description: 'A Batch job failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.batch'
@@ -700,7 +700,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A CodePipeline execution failed (created by marbot).'
+      Description: 'A CodePipeline execution failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.codepipeline'
@@ -718,7 +718,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'CodePipeline notifications (created by marbot).'
+      Description: 'CodePipeline notifications. (created by marbot)'
       EventPattern:
         source:
         - 'aws.codepipeline'
@@ -736,7 +736,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A CodeBuild build failed (created by marbot).'
+      Description: 'A CodeBuild build failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.codebuild'
@@ -754,7 +754,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'A CodeDeploy deployment or instance failed (created by marbot).'
+      Description: 'A CodeDeploy deployment or instance failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.codedeploy'
@@ -773,7 +773,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'AWS is experiencing events that may impact you (created by marbot).'
+      Description: 'AWS is experiencing events that may impact you. (created by marbot)'
       EventPattern:
         source:
         - 'aws.health'
@@ -792,7 +792,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'EC2 Instances controlled by an Auto Scaling Group failed to launch or terminate (created by marbot).'
+      Description: 'EC2 Instances controlled by an Auto Scaling Group failed to launch or terminate. (created by marbot)'
       EventPattern:
         source:
         - 'aws.autoscaling'
@@ -808,7 +808,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS GuardDuty (created by marbot).'
+      Description: 'Findings from AWS GuardDuty. (created by marbot)'
       EventPattern:
         source:
         - 'aws.guardduty'
@@ -823,7 +823,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'EMR step or auto scaling policy failed (created by marbot).'
+      Description: 'EMR step or auto scaling policy failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.emr'
@@ -842,7 +842,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'EBS snapshot failed (created by marbot).'
+      Description: 'EBS snapshot failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ec2'
@@ -861,7 +861,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'SSM maintenance window execution failed (created by marbot).'
+      Description: 'SSM maintenance window execution failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ssm'
@@ -894,7 +894,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Glue job failed (created by marbot).'
+      Description: 'Glue job failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.glue'
@@ -913,7 +913,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'EC2 Spot Instance interrupted (created by marbot).'
+      Description: 'EC2 Spot Instance interrupted. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ec2'
@@ -928,7 +928,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'ECS Service failed (created by marbot).'
+      Description: 'ECS Service failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ec2'
@@ -947,7 +947,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts from AWS Macie (created by marbot).'
+      Description: 'Alerts from AWS Macie. (created by marbot)'
       EventPattern:
         source:
         - 'aws.macie'
@@ -962,7 +962,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS SecurityHub (created by marbot).'
+      Description: 'Findings from AWS SecurityHub. (created by marbot)'
       EventPattern:
         source:
         - 'aws.securityhub'
@@ -977,7 +977,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'An OpsWorks deployment failed (created by marbot).'
+      Description: 'An OpsWorks deployment failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -995,7 +995,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'An OpsWorks command failed (created by marbot).'
+      Description: 'An OpsWorks command failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -1015,7 +1015,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'An OpsWorks instance failed (created by marbot).'
+      Description: 'An OpsWorks instance failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -1036,7 +1036,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts from AWS OpsWorks (created by marbot).'
+      Description: 'Alerts from AWS OpsWorks. (created by marbot)'
       EventPattern:
         source:
         - 'aws.opsworks'
@@ -1066,7 +1066,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts from Amazon Data Lifecycle Manager (created by marbot).'
+      Description: 'Alerts from Amazon Data Lifecycle Manager. (created by marbot)'
       EventPattern:
         source:
         - 'aws.dlm'
@@ -1084,7 +1084,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts from IoT Analytics dataset (created by marbot).'
+      Description: 'Alerts from IoT Analytics dataset. (created by marbot)'
       EventPattern:
         source:
         - 'aws.iotanalytics'

@@ -45,21 +45,25 @@ Parameters:
     Description: 'The cluster ID of the RDS Aurora cluster that you want to monitor.'
     Type: String
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU utilization.'
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Description: 'The minimum number of CPU credits available (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   FreeableMemoryThreshold:
-    Description: 'The minimum amount of available random access memory in Byte.'
+    Description: 'The minimum amount of available random access memory in Byte (set to -1 to disable).'
     Type: Number
     Default: 64000000 # 64 Megabyte in Byte
-    MinValue: 0
+    MinValue: -1
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasFreeableMemoryThreshold: !Not [!Equals [!Ref FreeableMemoryThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -115,7 +119,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -138,12 +142,13 @@ Resources:
   #                                                                        #
   ##########################################################################
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average database CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: DBClusterIdentifier
@@ -158,12 +163,13 @@ Resources:
       Threshold: !Ref CPUUtilizationThreshold
       TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
+    Condition: HasCPUCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average database CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: DBClusterIdentifier
@@ -178,12 +184,13 @@ Resources:
       Threshold: !Ref CPUCreditBalanceThreshold
       TreatMissingData: notBreaching
   FreeableMemoryTooLowAlarm:
+    Condition: HasFreeableMemoryThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database freeable memory over last 10 minutes too low, performance may suffer (created by marbot).'
+      AlarmDescription: 'Average database freeable memory over last 10 minutes too low, performance may suffer. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: DBClusterIdentifier

@@ -44,15 +44,18 @@ Parameters:
     Description: 'The Lambda function name that you want to monitor.'
     Type: String
   ErrorsThreshold:
-    Description: 'The maximum errors of a Lambda function.'
+    Description: 'The maximum errors of a Lambda function (set to -1 to disable).'
     Type: Number
     Default: 0
-    MinValue: 0
+    MinValue: -1
   ThrottlesThreshold:
-    Description: 'The maximum throttles of a Lambda function.'
+    Description: 'The maximum throttles of a Lambda function (set to -1 to disable).'
     Type: Number
     Default: 0
-    MinValue: 0
+    MinValue: -1
+Conditions:
+  HasErrorsThreshold: !Not [!Equals [!Ref ErrorsThreshold, '-1']]
+  HasThrottlesThreshold: !Not [!Equals [!Ref ThrottlesThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -106,7 +109,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -129,6 +132,7 @@ Resources:
   #                                                                        #
   ##########################################################################
   ErrorsAlarm:
+    Condition: HasErrorsThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
@@ -150,6 +154,7 @@ Resources:
       Threshold: !Ref ErrorsThreshold
       TreatMissingData: notBreaching
   ThrottlesAlarm:
+    Condition: HasThrottlesThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:

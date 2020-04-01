@@ -45,22 +45,26 @@ Parameters:
     Description: 'The instance ID of the EC2 instance that you want to monitor.'
     Type: 'AWS::EC2::Instance::Id'
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU utilization.'
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   CPUCreditBalanceThreshold:
-    Description: 'The minimum number of CPU credits (t2 instances only) available.'
+    Description: 'The minimum number of CPU credits available (t* instances only; set to -1 to disable).'
     Type: Number
     Default: 20
-    MinValue: 0
+    MinValue: -1
   NetworkUtilizationThreshold:
-    Description: 'The maximum percentage of network utilization.'
+    Description: 'The maximum percentage of network utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasNetworkUtilizationThreshold: !Not [!Equals [!Ref NetworkUtilizationThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -114,7 +118,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -137,12 +141,13 @@ Resources:
   #                                                                        #
   ##########################################################################
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: InstanceId
@@ -157,12 +162,13 @@ Resources:
       Threshold: !Ref CPUUtilizationThreshold
       TreatMissingData: notBreaching
   CPUCreditBalanceTooLowAlarm:
+    Condition: HasCPUCreditBalanceThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average CPU credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: LessThanThreshold
       Dimensions:
       - Name: InstanceId
@@ -182,7 +188,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'EC2 instance status check or the system status check has failed (created by marbot).'
+      AlarmDescription: 'EC2 instance status check or the system status check has failed. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: InstanceId
@@ -197,12 +203,13 @@ Resources:
       Threshold: 0
       TreatMissingData: notBreaching
   NetworkBurstUtilizationTooHighAlarm:
+    Condition: HasNetworkUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon (created by marbot).'
+      AlarmDescription: 'Average Network In+Out burst utilization over last 10 minutes too high, expect a significant performance drop soon. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -241,12 +248,13 @@ Resources:
       Threshold: !GetAtt 'InstanceDetails.NetworkBurst' # in Gbit/s
       TreatMissingData: notBreaching
   NetworkBaselineUtilizationTooHighAlarm:
+    Condition: HasNetworkUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst (created by marbot).'
+      AlarmDescription: 'Average Network In+Out baseline utilization over last 10 minutes too high, you might can burst. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:
@@ -285,12 +293,13 @@ Resources:
       Threshold: !GetAtt 'InstanceDetails.NetworkBaseline' # in Gbit/s
       TreatMissingData: notBreaching
   NetworkUtilizationTooHighAlarm:
+    Condition: HasNetworkUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average Network In+Out utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 1
       Metrics:

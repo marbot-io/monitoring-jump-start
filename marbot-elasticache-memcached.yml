@@ -45,21 +45,25 @@ Parameters:
     Description: 'The cluster ID of the ElastiCache memcached cluster that you want to monitor.'
     Type: String
   CPUUtilizationThreshold:
-    Description: 'The maximum percentage of CPU utilization (all nodes are averaged).'
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
     Type: Number
     Default: 80
-    MinValue: 0
+    MinValue: -1
     MaxValue: 100
   SwapUsageThreshold:
-    Description: 'The maximum amount of swap space used (all nodes are averaged) in Byte.'
+    Description: 'The maximum amount of swap space used in Byte (set to -1 to disable).'
     Type: Number
     Default: 256000000 # 256 Megabyte in Byte
-    MinValue: 0
+    MinValue: -1
   EvictionsThreshold:
-    Description: 'The maximum number of keys evicted per minute because of missing memory (all nodes are summed).'
+    Description: 'The maximum number of keys evicted per minute because of missing memory (set to -1 to disable).'
     Type: Number
     Default: 1000
-    MinValue: 0
+    MinValue: -1
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasSwapUsageThreshold: !Not [!Equals [!Ref SwapUsageThreshold, '-1']]
+  HasEvictionsThreshold: !Not [!Equals [!Ref EvictionsThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -113,7 +117,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -136,12 +140,13 @@ Resources:
   #                                                                        #
   ##########################################################################
   CPUUtilizationTooHighAlarm:
+    Condition: HasCPUUtilizationThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average CPU utilization over last 10 minutes too high (created by marbot).'
+      AlarmDescription: 'Average CPU utilization over last 10 minutes too high. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: CacheClusterId
@@ -155,12 +160,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref CPUUtilizationThreshold
   SwapUsageTooHighAlarm:
+    Condition: HasSwapUsageThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average swap usage over last 10 minutes too high, performance may suffer (created by marbot).'
+      AlarmDescription: 'Average swap usage over last 10 minutes too high, performance may suffer. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: CacheClusterId
@@ -174,12 +180,13 @@ Resources:
       Statistic: Average
       Threshold: !Ref SwapUsageThreshold
   EvictionsTooHighAlarm:
+    Condition: HasEvictionsThreshold
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Evictions over last 10 minutes too high, memory may to less for all keys (created by marbot).'
+      AlarmDescription: 'Evictions over last 10 minutes too high, memory may to less for all keys. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: CacheClusterId
