@@ -32,6 +32,8 @@ Metadata:
       Parameters:
       - CPUUtilizationThreshold
       - CPUCreditBalanceThreshold
+      - EBSIOCreditBalanceThreshold
+      - EBSThroughputCreditBalanceThreshold
       - NetworkUtilizationThreshold
 Parameters:
   EndpointId:
@@ -62,6 +64,18 @@ Parameters:
     Type: Number
     Default: 20
     MinValue: -1
+  EBSIOCreditBalanceThreshold:
+    Description: 'The minimum percentage of I/O credits remaining in the burst bucket (smaller instance only; set to -1 to disable).'
+    Type: Number
+    Default: 20
+    MinValue: -1
+    MaxValue: 100
+  EBSThroughputCreditBalanceThreshold:
+    Description: 'The minimum percentage of throughput credits remaining in the burst bucket (smaller instance only; set to -1 to disable).'
+    Type: Number
+    Default: 20
+    MinValue: -1
+    MaxValue: 100
   NetworkUtilizationThreshold:
     Description: 'The maximum percentage of network utilization (set to -1 to disable).'
     Type: Number
@@ -175,6 +189,8 @@ Resources:
         InstanceId: !Select [0, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance1NestedStack:
@@ -188,6 +204,8 @@ Resources:
         InstanceId: !Select [1, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance2NestedStack:
@@ -201,6 +219,8 @@ Resources:
         InstanceId: !Select [2, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance3NestedStack:
@@ -214,6 +234,8 @@ Resources:
         InstanceId: !Select [3, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance4NestedStack:
@@ -227,6 +249,8 @@ Resources:
         InstanceId: !Select [4, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance5NestedStack:
@@ -240,6 +264,8 @@ Resources:
         InstanceId: !Select [5, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance6NestedStack:
@@ -253,6 +279,8 @@ Resources:
         InstanceId: !Select [6, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance7NestedStack:
@@ -266,6 +294,8 @@ Resources:
         InstanceId: !Select [7, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance8NestedStack:
@@ -279,6 +309,8 @@ Resources:
         InstanceId: !Select [8, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   Instance9NestedStack:
@@ -292,6 +324,8 @@ Resources:
         InstanceId: !Select [9, !Ref InstanceIds]
         CPUUtilizationThreshold: !Ref CPUUtilizationThreshold
         CPUCreditBalanceThreshold: !Ref CPUCreditBalanceThreshold
+        EBSIOCreditBalanceThreshold: !Ref EBSIOCreditBalanceThreshold
+        EBSThroughputCreditBalanceThreshold: !Ref EBSThroughputCreditBalanceThreshold
         NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       TemplateURL: 'https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-ec2-instances-nested.yml'
   ##########################################################################
@@ -429,4 +463,4 @@ Outputs:
     Value: 'marbot-ec2-instances'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.2.0'
+    Value: '2.3.0'

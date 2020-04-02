@@ -26,7 +26,6 @@ Metadata:
     - Label:
         default: 'Alerts'
       Parameters:
-      - BillingThreshold
       - BudgetThreshold
       - TrustedAdvisor
       - RootUserLogin
@@ -77,16 +76,11 @@ Parameters:
     Type: String
     Default: 'true'
     AllowedValues: ['true', 'false']
-  BillingThreshold:
-    Description: 'Deprecated, use BudgetThreshold instead! Receive an alert, if your monthly AWS costs (in USD) are higher than this value (leave blank to disable, works in us-east-1 only).'
-    Type: String
-    Default: ''
-    AllowedPattern: '^[0-9]*$'
   BudgetThreshold:
-    Description: 'Receive an alert, if your monthly AWS costs (in USD) are higher than this value (leave blank to disable, works in us-east-1 only).'
-    Type: String
-    Default: '10'
-    AllowedPattern: '^[0-9]*$'
+    Description: 'Receive an alert, if your monthly AWS costs (in USD) are higher than this value (works in us-east-1 only; set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
   AMIUpdateNotificationECSOptimized:
     Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only).'
     Type: String
@@ -251,8 +245,7 @@ Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
   # Only available in us-east-1
-  BillingEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BillingThreshold, '']]]
-  BudgetEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BudgetThreshold, '']]]
+  BudgetEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BudgetThreshold, '-1']]]
   AMIUpdateNotificationECSOptimizedEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationECSOptimized, 'true']]
   AMIUpdateNotificationAmazonLinuxEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux, 'true']]
   AMIUpdateNotificationAmazonLinux2Enabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux2, 'true']]
@@ -353,7 +346,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Monitoring Jump Start connection (created by marbot).'
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
@@ -375,26 +368,6 @@ Resources:
   #                                 ALARMS                                 #
   #                                                                        #
   ##########################################################################
-  BillingAlarm:
-    Condition: BillingEnabled
-    DependsOn: TopicEndpointSubscription
-    Type: 'AWS::CloudWatch::Alarm'
-    Properties:
-      AlarmActions:
-      - !Ref Topic
-      AlarmDescription: 'Your monthly AWS costs are higher than expected (created by marbot).'
-      ComparisonOperator: GreaterThanThreshold
-      Dimensions:
-      - Name: Currency
-        Value: USD
-      EvaluationPeriods: 1
-      MetricName: EstimatedCharges
-      Namespace: 'AWS/Billing'
-      OKActions:
-      - !Ref Topic
-      Period: 21600
-      Statistic: Maximum
-      Threshold: !Ref BillingThreshold
   TrustedAdvisorCostOptimizationAlarm:
     Condition: TrustedAdvisorEnabled
     DependsOn: TopicEndpointSubscription
@@ -1195,7 +1168,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.20.0'
+    Value: '2.0.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'

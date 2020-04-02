@@ -31,6 +31,8 @@ Metadata:
       Parameters:
       - CPUUtilizationThreshold
       - CPUCreditBalanceThreshold
+      - EBSIOCreditBalanceThreshold
+      - EBSThroughputCreditBalanceThreshold
       - NetworkUtilizationThreshold
 Parameters:
   EndpointId:
@@ -55,6 +57,18 @@ Parameters:
     Type: Number
     Default: 20
     MinValue: -1
+  EBSIOCreditBalanceThreshold:
+    Description: 'The minimum percentage of I/O credits remaining in the burst bucket (smaller instance only; set to -1 to disable).'
+    Type: Number
+    Default: 20
+    MinValue: -1
+    MaxValue: 100
+  EBSThroughputCreditBalanceThreshold:
+    Description: 'The minimum percentage of throughput credits remaining in the burst bucket (smaller instance only; set to -1 to disable).'
+    Type: Number
+    Default: 20
+    MinValue: -1
+    MaxValue: 100
   NetworkUtilizationThreshold:
     Description: 'The maximum percentage of network utilization (set to -1 to disable).'
     Type: Number
@@ -64,6 +78,8 @@ Parameters:
 Conditions:
   HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
   HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
+  HasEBSIOCreditBalanceThreshold: !Not [!Equals [!Ref EBSIOCreditBalanceThreshold, '-1']]
+  HasEBSThroughputCreditBalanceThreshold: !Not [!Equals [!Ref EBSThroughputCreditBalanceThreshold, '-1']]
   HasNetworkUtilizationThreshold: !Not [!Equals [!Ref NetworkUtilizationThreshold, '-1']]
 Resources:
   ##########################################################################
@@ -181,6 +197,48 @@ Resources:
       Period: 600
       Statistic: Average
       Threshold: !Ref CPUCreditBalanceThreshold
+      TreatMissingData: notBreaching
+  EBSIOCreditBalanceTooLowAlarm:
+    Condition: HasEBSIOCreditBalanceThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average EBS IO credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: 'EBSIOBalance%'
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref EBSIOCreditBalanceThreshold
+      TreatMissingData: notBreaching
+  EBSThroughputCreditBalanceTooLowAlarm:
+    Condition: HasEBSThroughputCreditBalanceThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average EBS throughput credit balance over last 10 minutes too low, expect a significant performance drop soon. (created by marbot)'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: InstanceId
+        Value: !Ref InstanceId
+      EvaluationPeriods: 1
+      MetricName: 'EBSByteBalance%'
+      Namespace: 'AWS/EC2'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref EBSThroughputCreditBalanceThreshold
       TreatMissingData: notBreaching
   StatusCheckFailedAlarm:
     DependsOn: TopicEndpointSubscription
@@ -480,4 +538,4 @@ Outputs:
     Value: 'marbot-ec2-instance'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.2.0'
+    Value: '2.3.0'
