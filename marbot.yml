@@ -904,7 +904,7 @@ Resources:
       Description: 'ECS Service failed. (created by marbot)'
       EventPattern:
         source:
-        - 'aws.ec2'
+        - 'aws.ecs'
         'detail-type':
         - 'ECS Service Action'
         detail:
