@@ -1030,6 +1030,12 @@ Resources:
         - 'aws.ecr'
         'detail-type':
         - 'ECR Image Scan'
+        detail:
+          finding-severity-counts:
+            CRITICAL: [{exists: false}, {numeric: ['>', 0]}]
+            HIGH: [{exists: false}, {numeric: ['>', 0]}]
+            MEDIUM: [{exists: false}, {numeric: ['>', 0]}]
+            UNDEFINED: [{exists: false}, {numeric: ['>', 0]}]
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
