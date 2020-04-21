@@ -1024,8 +1024,8 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS ECR Image Scans (created by marbot).'
-      EventPattern: # a pattern that filters on severity is not possible https://github.com/aws/containers-roadmap/issues/565
+      Description: 'Findings from AWS ECR Image Scans. (created by marbot)'
+      EventPattern:
         source:
         - 'aws.ecr'
         'detail-type':
