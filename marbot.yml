@@ -356,7 +356,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "1.20.0",
+            "StackVersion": "2.0.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
