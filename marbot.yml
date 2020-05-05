@@ -623,11 +623,8 @@ Resources:
         Statement:
         - Effect: Allow
           Action:
-          - 'logs:CreateLogGroup'
           - 'logs:CreateLogStream'
           - 'logs:PutLogEvents'
-          - 'logs:DescribeLogStreams'
-          - 'logs:DescribeLogGroups'
           Resource: !GetAtt 'CloudWatchAlarmFilterLogGroup.Arn'
       PolicyName: lambda
       Roles:
@@ -1315,11 +1312,8 @@ Resources:
           Statement:
           - Effect: Allow
             Action:
-            - 'logs:CreateLogGroup'
             - 'logs:CreateLogStream'
             - 'logs:PutLogEvents'
-            - 'logs:DescribeLogStreams'
-            - 'logs:DescribeLogGroups'
             Resource: !GetAtt 'TestAlertFunctionLogGroup.Arn'
 Outputs:
   StackName:
