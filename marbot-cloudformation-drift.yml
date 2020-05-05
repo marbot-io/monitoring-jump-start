@@ -147,8 +147,11 @@ Resources:
             Resource: !Ref StateMachine
           - Effect: Allow
             Action:
+            - 'logs:CreateLogGroup'
             - 'logs:CreateLogStream'
             - 'logs:PutLogEvents'
+            - 'logs:DescribeLogStreams'
+            - 'logs:DescribeLogGroups'
             Resource: '*'
   RoleFetchDriftStatus:
     Type: 'AWS::IAM::Role'
@@ -169,8 +172,11 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
+            - 'logs:CreateLogGroup'
             - 'logs:CreateLogStream'
             - 'logs:PutLogEvents'
+            - 'logs:DescribeLogStreams'
+            - 'logs:DescribeLogGroups'
             Resource: '*'
   RoleStartDriftDetection:
     Type: 'AWS::IAM::Role'
@@ -195,8 +201,11 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
+            - 'logs:CreateLogGroup'
             - 'logs:CreateLogStream'
             - 'logs:PutLogEvents'
+            - 'logs:DescribeLogStreams'
+            - 'logs:DescribeLogGroups'
             Resource: '*'
   RoleFetchDetectionStatus:
     Type: 'AWS::IAM::Role'
@@ -217,8 +226,11 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
+            - 'logs:CreateLogGroup'
             - 'logs:CreateLogStream'
             - 'logs:PutLogEvents'
+            - 'logs:DescribeLogStreams'
+            - 'logs:DescribeLogGroups'
             Resource: '*'
   RoleSendDriftNotification:
     Type: 'AWS::IAM::Role'
@@ -239,8 +251,11 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
+            - 'logs:CreateLogGroup'
             - 'logs:CreateLogStream'
             - 'logs:PutLogEvents'
+            - 'logs:DescribeLogStreams'
+            - 'logs:DescribeLogGroups'
             Resource: '*'
   Permission:
     Type: 'AWS::Lambda::Permission'
