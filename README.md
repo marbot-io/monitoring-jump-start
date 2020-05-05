@@ -22,6 +22,7 @@ At the moment, you can monitor:
 | [RDS cluster (Aurora)](marbot-rds-cluster.yml) | [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-rds-cluster.yml) | `https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-rds-cluster.yml` |
 | [SQS queue](marbot-sqs-queue.yml) | [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-sqs-queue.yml) | `https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-sqs-queue.yml` |
 | [CloudFormation Drift Detection](marbot-cloudformation-drift.yml) | [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-cloudformation-drift.yml) | `https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-cloudformation-drift.yml` |
+| [WorkSpaces](marbot-workspaces.yml) | [Launch Stack](https://console.aws.amazon.com/cloudformation/home#/stacks/create/review?templateURL=https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-workspaces.yml) | `https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/marbot-workspaces.yml` |
 
 ## Update procedure
 
