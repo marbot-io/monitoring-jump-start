@@ -1,0 +1,287 @@
+---
+# Copyright 2020 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: Synthetics Website (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'Canary'
+      Parameters:
+      - URL
+      - Name
+      - Rate
+    - Label:
+        default: 'Expectations'
+      Parameters:
+      - ExpectedTitle
+      - ExpectedElement
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - SuccessPercentThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  URL:
+    Description: 'The URL to monitor'
+    Type: String
+    Default: 'https://website.com'
+  Name:
+    Description: 'Canary name'
+    Type: String
+    AllowedPattern: '^[0-9a-z_\-]+$'
+    MinLength: 1
+    MaxLength: 21
+  Rate:
+    Description: 'How often should the test run?'
+    Type: String
+    AllowedValues:
+    - 'rate(1 minute)'
+    - 'rate(5 minutes)'
+    - 'rate(10 minutes)'
+    - 'rate(15 minutes)'
+    - 'rate(30 minutes)'
+    - 'rate(45 minutes)'
+    - 'rate(1 hour)'
+    Default: 'rate(5 minutes)'
+  ExpectedTitle:
+    Description: 'Search for the following string in the title (leave empty to disable)'
+    Type: String
+    Default: ''
+  ExpectedElement:
+    Description: 'Search for the following Element in the HTML document using a selector (e.g., .class, #id, h1; details https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Selectors) (leave empty to disable)'
+    Type: String
+    Default: ''
+  SuccessPercentThreshold:
+    Description: 'The minimum percentage of succesful runs (set to -1 to disable).'
+    Type: Number
+    Default: 90
+    MinValue: -1
+    MaxValue: 100
+Conditions:
+  HasExpectedTitle: !Not [!Equals [!Ref ExpectedTitle, '']]
+  HasExpectedElement: !Not [!Equals [!Ref ExpectedElement, '']]
+  HasSuccessPercentThreshold: !Not [!Equals [!Ref SuccessPercentThreshold, '-1']]
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            Service: 'events.amazonaws.com' # Allow CloudWatch Events
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+        - Sid: Sid2
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          minDelayTarget: 1
+          maxDelayTarget: 60
+          numRetries: 100
+          numNoDelayRetries: 0
+          backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  MonitoringJumpStartEvent:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
+      ScheduleExpression: 'rate(30 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackTemplate": "marbot-synthetics-website",
+            "StackVersion": "1.0.0",
+            "Partition": "${AWS::Partition}",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
+          }
+  ##########################################################################
+  #                                                                        #
+  #                                CANARY                                  #
+  #                                                                        #
+  ##########################################################################     
+  CanaryBucket:
+    Type: 'AWS::S3::Bucket'
+    Properties: {}
+  CanaryRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: execution
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action: 's3:ListAllMyBuckets'
+            Resource: '*'
+          - Effect: Allow
+            Action: 's3:PutObject'
+            Resource: !Sub '${CanaryBucket.Arn}/*'
+          - Effect: Allow
+            Action: 's3:GetBucketLocation'
+            Resource: !GetAtt 'CanaryBucket.Arn'
+          - Effect: Allow
+            Action: 'cloudwatch:PutMetricData'
+            Resource: '*'
+            Condition:
+              StringEquals:
+                'cloudwatch:namespace': CloudWatchSynthetics
+  CanaryLogGroup:
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/cwsyn-${Canary}-${Canary.Id}'
+      RetentionInDays: 14
+  CanaryPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'logs:CreateLogStream'
+          - 'logs:PutLogEvents'
+          Resource: !GetAtt 'CanaryLogGroup.Arn'
+      PolicyName: logs
+      Roles:
+      - !Ref CanaryRole
+  Canary:
+    Type: 'AWS::Synthetics::Canary'
+    Properties: 
+      ArtifactS3Location: !Sub 's3://${CanaryBucket}'
+      Code: 
+        Handler: 'index.handler'
+        Script: !Sub
+        - |
+          const synthetics = require('Synthetics');
+          const log = require('SyntheticsLogger');
+          exports.handler = async () => {
+            const page = await synthetics.getPage();
+            const response = await page.goto('${URL}', {waitUntil: 'domcontentloaded', timeout: 30000});
+            try {
+              ${ElementCode}
+              ${TitleCode}
+              if (response.status() !== 200) {
+                throw(new Error('Failed to load page!'));
+              }
+            } finally {
+              await synthetics.takeScreenshot('loaded', 'result');
+            }
+          };
+        - URL: !Ref URL
+          ElementCode: !If [HasExpectedElement, !Sub 'await page.waitFor(''${ExpectedElement}'', {timeout: 15000});', 'await page.waitFor(15000);']
+          TitleCode: !If [HasExpectedTitle, !Sub 'const title = await page.title(); if (!title.includes(''${ExpectedTitle}'')) {throw new Error(''title not as expected'')}', '']
+      ExecutionRoleArn: !GetAtt 'CanaryRole.Arn'
+      FailureRetentionPeriod: 30
+      Name: !Ref Name
+      RunConfig: 
+        TimeoutInSeconds: 60
+      RuntimeVersion: 'syn-1.0'
+      Schedule:
+        DurationInSeconds: '0' # run forever
+        Expression: !Ref Rate
+      StartCanaryAfterCreation: true
+      SuccessRetentionPeriod: 30
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  SuccessPercentAlarm:
+    DependsOn: TopicEndpointSubscription
+    Condition: HasSuccessPercentThreshold
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Canary is failing. (created by marbot)'
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+      - Name: CanaryName
+        Value: !Ref Canary
+      EvaluationPeriods: 1
+      MetricName: SuccessPercent
+      Namespace: CloudWatchSynthetics
+      OKActions:
+      - !Ref Topic
+      Period: 300
+      Statistic: Minimum
+      Threshold: !Ref SuccessPercentThreshold
+      TreatMissingData: notBreaching
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-synthetics-website'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
