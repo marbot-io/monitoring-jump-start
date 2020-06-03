@@ -60,14 +60,13 @@ Parameters:
     Description: 'How often should the test run?'
     Type: String
     AllowedValues:
-    - 'rate(1 minute)'
     - 'rate(5 minutes)'
     - 'rate(10 minutes)'
     - 'rate(15 minutes)'
     - 'rate(30 minutes)'
     - 'rate(45 minutes)'
     - 'rate(1 hour)'
-    Default: 'rate(5 minutes)'
+    Default: 'rate(15 minutes)'
   ExpectedTitle:
     Description: 'Search for the following string in the title (leave empty to disable)'
     Type: String
