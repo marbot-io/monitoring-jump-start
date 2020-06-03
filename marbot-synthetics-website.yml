@@ -160,7 +160,7 @@ Resources:
   #                                                                        #
   #                                CANARY                                  #
   #                                                                        #
-  ##########################################################################     
+  ##########################################################################
   CanaryBucket:
     Type: 'AWS::S3::Bucket'
     Properties: {}
@@ -214,9 +214,9 @@ Resources:
       - !Ref CanaryRole
   Canary:
     Type: 'AWS::Synthetics::Canary'
-    Properties: 
+    Properties:
       ArtifactS3Location: !Sub 's3://${CanaryBucket}'
-      Code: 
+      Code:
         Handler: 'index.handler'
         Script: !Sub
         - |
@@ -241,7 +241,7 @@ Resources:
       ExecutionRoleArn: !GetAtt 'CanaryRole.Arn'
       FailureRetentionPeriod: 30
       Name: !Ref Name
-      RunConfig: 
+      RunConfig:
         TimeoutInSeconds: 60
       RuntimeVersion: 'syn-1.0'
       Schedule:
