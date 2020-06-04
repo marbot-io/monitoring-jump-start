@@ -1,5 +1,5 @@
 ---
-# Copyright 2018 widdix GmbH
+# Copyright 2018-2020 widdix GmbH
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -104,7 +104,7 @@ Parameters:
   CloudWatchAlarmFired:
     Description: 'Receive an alert, if any CloudWatch Alarm fires (state ALARM; instead of defining actions for each alarm).'
     Type: String
-    Default: false
+    Default: true
     AllowedValues: [true, false]
   CloudWatchAlarmOrphaned:
     Description: 'Receive an alert, if any CloudWatch Alarm does not receive any data (state INSUFFICIENT_DATA; instead of defining actions for each alarm).'
@@ -255,6 +255,7 @@ Conditions:
   CloudWatchAlarmFiredEnabled: !Equals [!Ref CloudWatchAlarmFired, 'true']
   CloudWatchAlarmOrphanedEnabled: !Equals [!Ref CloudWatchAlarmOrphaned, 'true']
   CloudWatchAlarmAutoCloseEnabled: !Equals [!Ref CloudWatchAlarmAutoClose, 'true']
+  CloudWatchAlarmEnabled: !Or [!Condition CloudWatchAlarmFiredEnabled, !Condition CloudWatchAlarmOrphanedEnabled, !Condition CloudWatchAlarmAutoCloseEnabled]
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
   CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
   CodePipelineNotificationsEnabled: !Equals [!Ref CodePipelineNotifications, 'true']
@@ -304,6 +305,7 @@ Resources:
             - 'rds.amazonaws.com' # Allow RDS Events
             - 's3.amazonaws.com' # Allow S3 Event Notifications
             - 'backup.amazonaws.com' # Allow Backup Events
+            - 'codestar-notifications.amazonaws.com' # Allow CodeStart Notifications
           Action: 'sns:Publish'
           Resource: !Ref Topic
         - Sid: Sid2
@@ -356,7 +358,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "2.0.0",
+            "StackVersion": "2.1.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -593,9 +595,164 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  CloudWatchAlarmFilterRole:
+    Condition: CloudWatchAlarmEnabled
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: filter
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'cloudwatch:describeAlarms'
+            Resource: '*'
+          - Effect: Allow
+            Action: 'sns:Publish'
+            Resource: !Ref Topic
+  CloudWatchAlarmFilterPolicy:
+    Condition: CloudWatchAlarmEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'logs:CreateLogStream'
+          - 'logs:PutLogEvents'
+          Resource: !GetAtt 'CloudWatchAlarmFilterLogGroup.Arn'
+      PolicyName: lambda
+      Roles:
+      - !Ref CloudWatchAlarmFilterRole
+  CloudWatchAlarmFilterFunction:
+    Condition: CloudWatchAlarmEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs12.x'
+      MemorySize: 1024
+      Timeout: 30
+      Role: !GetAtt 'CloudWatchAlarmFilterRole.Arn'
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref Topic
+      Code:
+        ZipFile: |
+          'use strict';
+          const AWS = require('aws-sdk')
+          const cloudwatch = new AWS.CloudWatch({apiVersion: '2010-08-01'});
+          const sns = new AWS.SNS({apiVersion: '2010-03-31'});
+          const STATE2ACTION = {
+            'ALARM': 'AlarmActions',
+            'OK': 'OKActions',
+            'INSUFFICIENT_DATA':  'InsufficientDataActions'
+          };
+          exports.handler = async (event) => {
+            console.log(JSON.stringify(event));
+            const data = await cloudwatch.describeAlarms({
+              AlarmNames: [event.detail.alarmName],
+              MaxRecords: 1
+            }).promise();
+            const alarms = [...data.CompositeAlarms, ...data.MetricAlarms];
+            console.log(JSON.stringify(alarms));
+            if (alarms.length === 0) {
+              return;
+            } else {
+              const alarm = alarms[0];
+              const action = STATE2ACTION[event.detail.state.value];
+              const actions = alarm[action];
+              console.log(JSON.stringify(actions));
+              if (alarm.ActionsEnabled) {
+                if (actions.filter(action => action.includes(':autoscaling:')).length > 0) {
+                  console.log("drop");
+                } else {
+                  console.log("publish");
+                  await sns.publish({
+                    TopicArn: process.env.TOPIC_ARN,
+                    Message: JSON.stringify(event)
+                  }).promise();
+                }
+              }
+            }
+          };
+  CloudWatchAlarmFilterAlarmErrorsTooHigh:
+    Condition: CloudWatchAlarmEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Invocations failed due to errors in the function'
+      Namespace: 'AWS/Lambda'
+      MetricName: Errors
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - !Ref Topic
+      Dimensions:
+      - Name: FunctionName
+        Value: !Ref CloudWatchAlarmFilterFunction
+  CloudWatchAlarmFilterAlarmThrottlesTooHigh:
+    Condition: CloudWatchAlarmEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Invocation attempts that were throttled due to invocation rates exceeding the concurrent limits'
+      Namespace: 'AWS/Lambda'
+      MetricName: Throttles
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - !Ref Topic
+      Dimensions:
+      - Name: FunctionName
+        Value: !Ref CloudWatchAlarmFilterFunction
+  CloudWatchAlarmFilterLogGroup:
+    Condition: CloudWatchAlarmEnabled
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${CloudWatchAlarmFilterFunction}'
+      RetentionInDays: 14
+  CloudWatchAlarmFilterPermissionFiredEvent:
+    Condition: CloudWatchAlarmFiredEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref CloudWatchAlarmFilterFunction
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt 'CloudWatchAlarmFiredEvent.Arn'
+  CloudWatchAlarmFilterPermissionAlarmAutoCloseEvent:
+    Condition: CloudWatchAlarmAutoCloseEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref CloudWatchAlarmFilterFunction
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt 'CloudWatchAlarmAutoCloseEvent.Arn'
+  CloudWatchAlarmFilterPermissionOrphanedEvent:
+    Condition: CloudWatchAlarmOrphanedEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref CloudWatchAlarmFilterFunction
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt 'CloudWatchAlarmOrphanedEvent.Arn'
   CloudWatchAlarmFiredEvent:
     Condition: CloudWatchAlarmFiredEnabled
-    DependsOn: TopicEndpointSubscription
+    DependsOn: CloudWatchAlarmFilterPolicy
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'A CloudWatch Alarm fired. (created by marbot)'
@@ -610,7 +767,7 @@ Resources:
             - ALARM
       State: ENABLED
       Targets:
-      - Arn: !Ref Topic
+      - Arn: !GetAtt 'CloudWatchAlarmFilterFunction.Arn'
         Id: marbot
   CloudWatchAlarmOrphanedEvent:
     Condition: CloudWatchAlarmOrphanedEnabled
@@ -629,7 +786,7 @@ Resources:
             - INSUFFICIENT_DATA
       State: ENABLED
       Targets:
-      - Arn: !Ref Topic
+      - Arn: !GetAtt 'CloudWatchAlarmFilterFunction.Arn'
         Id: marbot
   CloudWatchAlarmAutoCloseEvent:
     Condition: CloudWatchAlarmAutoCloseEnabled
@@ -648,7 +805,7 @@ Resources:
             - OK
       State: ENABLED
       Targets:
-      - Arn: !Ref Topic
+      - Arn: !GetAtt 'CloudWatchAlarmFilterFunction.Arn'
         Id: marbot
   BatchFailedEvent:
     Condition: BatchFailedEnabled
@@ -1024,8 +1181,8 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS ECR Image Scans (created by marbot).'
-      EventPattern: # a pattern that filters on severity is not possible https://github.com/aws/containers-roadmap/issues/565
+      Description: 'Findings from AWS ECR Image Scans. (created by marbot)'
+      EventPattern:
         source:
         - 'aws.ecr'
         'detail-type':
@@ -1174,7 +1331,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.0.0'
+    Value: '2.1.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'

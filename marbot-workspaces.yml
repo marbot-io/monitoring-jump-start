@@ -1,5 +1,5 @@
 ---
-# Copyright 2019-2020 widdix GmbH
+# Copyright 2020 widdix GmbH
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: Lambda function monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Description: 'marbot.io: Amazon WorkSpaces monitoring (https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -23,14 +23,9 @@ Metadata:
       - EndpointId
       - Stage
     - Label:
-        default: 'Lambda'
+        default: 'WorkSpaces'
       Parameters:
-      - FunctionName
-    - Label:
-        default: 'Thresholds'
-      Parameters:
-      - ErrorsThreshold
-      - ThrottlesThreshold
+      - DirectoryId
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -40,22 +35,9 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
-  FunctionName:
-    Description: 'The Lambda function name that you want to monitor.'
+  DirectoryId:
+    Description: 'The identifier of the AWS Directory Service directory for the WorkSpace.'
     Type: String
-  ErrorsThreshold:
-    Description: 'The maximum errors of a Lambda function (set to -1 to disable).'
-    Type: Number
-    Default: 0
-    MinValue: -1
-  ThrottlesThreshold:
-    Description: 'The maximum throttles of a Lambda function (set to -1 to disable).'
-    Type: Number
-    Default: 0
-    MinValue: -1
-Conditions:
-  HasErrorsThreshold: !Not [!Equals [!Ref ErrorsThreshold, '-1']]
-  HasThrottlesThreshold: !Not [!Equals [!Ref ThrottlesThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -118,7 +100,7 @@ Resources:
         Input: !Sub |
           {
             "Type": "monitoring-jump-start-connection",
-            "StackTemplate": "marbot-lambda-function",
+            "StackTemplate": "marbot-workspaces",
             "StackVersion": "1.0.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
@@ -131,57 +113,55 @@ Resources:
   #                                 ALARMS                                 #
   #                                                                        #
   ##########################################################################
-  ErrorsAlarm:
-    Condition: HasErrorsThreshold
+  UnhealthyAlarm:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Invocations failed due to errors'
+      AlarmDescription: 'Workspace has failed. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
       Dimensions:
-      - Name: FunctionName
-        Value: !Ref FunctionName
-      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      MetricName: Errors
-      Namespace: 'AWS/Lambda'
+      - Name: DirectoryId
+        Value: !Ref DirectoryId
+      EvaluationPeriods: 1
+      MetricName: Unhealthy
+      Namespace: 'AWS/WorkSpaces'
       OKActions:
       - !Ref Topic
-      Period: 60
+      Period: 600
       Statistic: Sum
-      Threshold: !Ref ErrorsThreshold
+      Threshold: 0
       TreatMissingData: notBreaching
-  ThrottlesAlarm:
-    Condition: HasThrottlesThreshold
+  ##########################################################################
+  #                                                                        #
+  #                                 EVENTS                                 #
+  #                                                                        #
+  ##########################################################################
+  UnsuccessfulEvent:
     DependsOn: TopicEndpointSubscription
-    Type: 'AWS::CloudWatch::Alarm'
+    Type: 'AWS::Events::Rule'
     Properties:
-      AlarmActions:
-      - !Ref Topic
-      AlarmDescription: 'Invocation attempts were throttled due to invocation rates exceeding the concurrent limits'
-      ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      Dimensions:
-      - Name: FunctionName
-        Value: !Ref FunctionName
-      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      MetricName: Throttles
-      Namespace: 'AWS/Lambda'
-      OKActions:
-      - !Ref Topic
-      Period: 60
-      Statistic: Sum
-      Threshold: !Ref ThrottlesThreshold
-      TreatMissingData: notBreaching
+      Description: 'User successfully logged in to a WorkSpace. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.workspaces'
+        'detail-type':
+        - 'WorkSpaces Access'
+        detail:
+          directoryId:
+          - !Ref DirectoryId
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
 Outputs:
   StackName:
     Description: 'Stack name.'
     Value: !Sub '${AWS::StackName}'
   StackTemplate:
     Description: 'Stack template.'
-    Value: 'marbot-lambda-function'
+    Value: 'marbot-workspaces'
   StackVersion:
     Description: 'Stack version.'
     Value: '1.0.0'

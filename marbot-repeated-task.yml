@@ -1,5 +1,5 @@
 ---
-# Copyright 2019-2020 widdix GmbH
+# Copyright 2020 widdix GmbH
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: Lambda function monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Description: 'marbot.io: Repeated task (https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -23,14 +23,10 @@ Metadata:
       - EndpointId
       - Stage
     - Label:
-        default: 'Lambda'
+        default: 'Task'
       Parameters:
-      - FunctionName
-    - Label:
-        default: 'Thresholds'
-      Parameters:
-      - ErrorsThreshold
-      - ThrottlesThreshold
+      - ScheduleExpression
+      - Message
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -40,22 +36,14 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
-  FunctionName:
-    Description: 'The Lambda function name that you want to monitor.'
+  ScheduleExpression:
+    Description: 'The scheduling expression determines when and how often a task runs (see https://docs.aws.amazon.com/eventbridge/latest/userguide/scheduled-events.html).'
     Type: String
-  ErrorsThreshold:
-    Description: 'The maximum errors of a Lambda function (set to -1 to disable).'
-    Type: Number
-    Default: 0
-    MinValue: -1
-  ThrottlesThreshold:
-    Description: 'The maximum throttles of a Lambda function (set to -1 to disable).'
-    Type: Number
-    Default: 0
-    MinValue: -1
-Conditions:
-  HasErrorsThreshold: !Not [!Equals [!Ref ErrorsThreshold, '-1']]
-  HasThrottlesThreshold: !Not [!Equals [!Ref ThrottlesThreshold, '-1']]
+    Default: 'cron(0 12 * * ? *)'
+  Message:
+    Description: 'What needs to be done?'
+    Type: String
+    Default: ''
 Resources:
   ##########################################################################
   #                                                                        #
@@ -78,15 +66,6 @@ Resources:
             Service: 'events.amazonaws.com' # Allow CloudWatch Events
           Action: 'sns:Publish'
           Resource: !Ref Topic
-        - Sid: Sid2
-          Effect: Allow
-          Principal:
-            AWS: '*' # Allow CloudWatch Alarms
-          Action: 'sns:Publish'
-          Resource: !Ref Topic
-          Condition:
-            StringEquals:
-              'AWS:SourceOwner': !Ref 'AWS::AccountId'
       Topics:
       - !Ref Topic
   TopicEndpointSubscription:
@@ -118,7 +97,7 @@ Resources:
         Input: !Sub |
           {
             "Type": "monitoring-jump-start-connection",
-            "StackTemplate": "marbot-lambda-function",
+            "StackTemplate": "marbot-repeated-task",
             "StackVersion": "1.0.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
@@ -128,60 +107,31 @@ Resources:
           }
   ##########################################################################
   #                                                                        #
-  #                                 ALARMS                                 #
+  #                                 EVENTS                                 #
   #                                                                        #
   ##########################################################################
-  ErrorsAlarm:
-    Condition: HasErrorsThreshold
+  Task:
     DependsOn: TopicEndpointSubscription
-    Type: 'AWS::CloudWatch::Alarm'
+    Type: 'AWS::Events::Rule'
     Properties:
-      AlarmActions:
-      - !Ref Topic
-      AlarmDescription: 'Invocations failed due to errors'
-      ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      Dimensions:
-      - Name: FunctionName
-        Value: !Ref FunctionName
-      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      MetricName: Errors
-      Namespace: 'AWS/Lambda'
-      OKActions:
-      - !Ref Topic
-      Period: 60
-      Statistic: Sum
-      Threshold: !Ref ErrorsThreshold
-      TreatMissingData: notBreaching
-  ThrottlesAlarm:
-    Condition: HasThrottlesThreshold
-    DependsOn: TopicEndpointSubscription
-    Type: 'AWS::CloudWatch::Alarm'
-    Properties:
-      AlarmActions:
-      - !Ref Topic
-      AlarmDescription: 'Invocation attempts were throttled due to invocation rates exceeding the concurrent limits'
-      ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      Dimensions:
-      - Name: FunctionName
-        Value: !Ref FunctionName
-      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
-      MetricName: Throttles
-      Namespace: 'AWS/Lambda'
-      OKActions:
-      - !Ref Topic
-      Period: 60
-      Statistic: Sum
-      Threshold: !Ref ThrottlesThreshold
-      TreatMissingData: notBreaching
+      Description: 'Repeated task. (created by marbot)'
+      ScheduleExpression: !Ref ScheduleExpression
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+        Input: !Sub |
+          {
+            "Type": "repeated-task",
+            "Message": "${Message}"
+          }
 Outputs:
   StackName:
     Description: 'Stack name.'
     Value: !Sub '${AWS::StackName}'
   StackTemplate:
     Description: 'Stack template.'
-    Value: 'marbot-lambda-function'
+    Value: 'marbot-repeated-task'
   StackVersion:
     Description: 'Stack version.'
     Value: '1.0.0'
