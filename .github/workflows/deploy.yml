@@ -18,5 +18,5 @@ jobs:
         AWS_SECRET_ACCESS_KEY: '${{ secrets.AWS_SECRET_ACCESS_KEY }}'
         AWS_DEFAULT_REGION: 'eu-west-1'
       run: |
-        pip3 install awscli==1.18.71
+        pip install awscli==1.18.71
         aws s3 sync . s3://monitoring-jump-start --exclude '*' --include '*.yml' --include 'data/*'
