@@ -1,0 +1,16 @@
+name: Test
+
+jobs:
+  deploy:
+    runs-on: 'ubuntu-18.04'
+
+    steps:
+    - uses: 'actions/checkout@v2'
+
+    - name: Script
+      run: |
+        pip3 install yamllint==1.23.0
+        pip3 install cfn-lint==0.33.0
+        yamllint .
+        find . -type f \( -name '*.yml' -o -name '*.yaml' \) -a ! -name '.*' | while read file; do set -ex && cfn-lint --template "$file"; done;
+        find . -type f \( -name '*.yml' -o -name '*.yaml' \) -a ! -name '.*' | while read file; do set -ex && grep -q "LICENSE-2.0" "$file"; done;
