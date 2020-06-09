@@ -11,6 +11,11 @@ jobs:
     runs-on: 'ubuntu-18.04'
 
     steps:
+    - name: 'Set up Python 2.7'
+      uses: actions/setup-python@v2
+      with:
+        python-version: '2.7'
+
     - uses: 'actions/checkout@v2'
 
     - name: Script
