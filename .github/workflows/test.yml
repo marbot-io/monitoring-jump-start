@@ -15,8 +15,8 @@ jobs:
 
     - name: Script
       run: |
-        pip install yamllint==1.23.0
-        pip install cfn-lint==0.33.0
+        pip install yamllint==1.23.0 --user
+        pip install cfn-lint==0.33.0 --user
         yamllint .
         find . -type f \( -name '*.yml' -o -name '*.yaml' \) -a ! -name '.*' | while read file; do set -ex && cfn-lint --template "$file"; done;
         find . -type f \( -name '*.yml' -o -name '*.yaml' \) -a ! -name '.*' | while read file; do set -ex && grep -q "LICENSE-2.0" "$file"; done;
