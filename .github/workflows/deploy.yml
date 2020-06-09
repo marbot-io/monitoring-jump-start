@@ -1,3 +1,4 @@
+---
 name: Deploy
 
 on:
@@ -10,10 +11,10 @@ jobs:
     runs-on: 'ubuntu-18.04'
 
     steps:
-    - name: 'Set up Python 2.7'
+    - name: 'Python'
       uses: actions/setup-python@v2
       with:
-        python-version: '2.7'
+        python-version: '3.8'
 
     - uses: 'actions/checkout@v2'
 
