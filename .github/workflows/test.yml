@@ -1,5 +1,11 @@
 name: Test
 
+on:
+  push:
+    branches:
+    - master
+  pull_request: {}
+
 jobs:
   deploy:
     runs-on: 'ubuntu-18.04'
