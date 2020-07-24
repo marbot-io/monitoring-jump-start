@@ -59,6 +59,7 @@ Metadata:
         default: 'Notifications'
       Parameters:
       - CodePipelineNotifications
+      - CodeCommitPullRequestNotifications
       - AMIUpdateNotificationECSOptimized
       - AMIUpdateNotificationAmazonLinux
       - AMIUpdateNotificationAmazonLinux2
@@ -128,6 +129,11 @@ Parameters:
     AllowedValues: [true, false]
   CodePipelineNotifications:
     Description: 'Receive a notification, if a CodePipeline pipeline succeedes.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodeCommitPullRequestNotifications:
+    Description: 'Receive a notification, if a CodeCommit pull request changes.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -259,6 +265,7 @@ Conditions:
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
   CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
   CodePipelineNotificationsEnabled: !Equals [!Ref CodePipelineNotifications, 'true']
+  CodeCommitPullRequestNotificationsEnabled: !Equals [!Ref CodeCommitPullRequestNotifications, 'true']
   CodeBuildFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
   CodeDeployFailedEnabled: !Equals [!Ref CodeDeployFailed, 'true']
   HealthIssueEnabled: !Equals [!Ref HealthIssue, 'true']
@@ -861,6 +868,21 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  CodeCommitPullRequestNotificationsEvent:
+    Condition: CodeCommitPullRequestNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'CodeCommit pull request notifications. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.codecommit'
+        'detail-type':
+        - 'CodeCommit Pull Request State Change'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   CodeBuildFailedEvent:
     Condition: CodeBuildFailedEnabled
     DependsOn: TopicEndpointSubscription
@@ -1325,7 +1347,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.1.0'
+    Value: '2.2.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'

@@ -1,7 +1,7 @@
 # Free Monitoring Templates for AWS CloudFormation
 Setting up monitoring on AWS is hard. There are countless monitoring possibilities on AWS. Overlooking the important settings is easy. Monitoring Jump Starts connect you with all relevant AWS sources for comprehensive monitoring coverage.
 
-Jump Starts are CloudFormation templates or [Terraform modules](https://github.com/marbot-io/monitoring-jump-start-tf) that you can deploy to your AWS account to setup CloudWatch Alarms, CloudWatch Event Rules, and much more.
+Jump Starts are CloudFormation templates or [Terraform modules](https://github.com/marbot-io/monitoring-jump-start-tf) that you can deploy to your AWS account to setup CloudWatch Alarms, CloudWatch Event Rules, and much more. Events are send to Slack or Microsoft Teams.
 
 At the moment, you can monitor:
 
