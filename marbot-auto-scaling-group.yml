@@ -35,7 +35,7 @@ Metadata:
       - EBSThroughputCreditBalanceThreshold
 Parameters:
   EndpointId:
-    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
     Type: String
   Stage:
     Description: 'marbot stage (never change this!).'

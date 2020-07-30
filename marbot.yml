@@ -59,12 +59,13 @@ Metadata:
         default: 'Notifications'
       Parameters:
       - CodePipelineNotifications
+      - CodeCommitPullRequestNotifications
       - AMIUpdateNotificationECSOptimized
       - AMIUpdateNotificationAmazonLinux
       - AMIUpdateNotificationAmazonLinux2
 Parameters:
   EndpointId:
-    Description: 'Your marbot endpoint ID (to get this value: select a Slack channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
     Type: String
   Stage:
     Description: 'marbot stage (never change this!).'
@@ -128,6 +129,11 @@ Parameters:
     AllowedValues: [true, false]
   CodePipelineNotifications:
     Description: 'Receive a notification, if a CodePipeline pipeline succeedes.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodeCommitPullRequestNotifications:
+    Description: 'Receive a notification, if a CodeCommit pull request changes.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -199,12 +205,12 @@ Parameters:
   MacieAlert:
     Description: 'Receive an alert, if Macie fires an alert.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   SecurityHubFinding:
     Description: 'Receive an alert, if a SecurityHub finding is created.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   OpsWorksDeploymentFailed:
     Description: 'Receive an alert, if an OpsWorks deployment fails.'
@@ -229,7 +235,7 @@ Parameters:
   ECRImageScanFinding:
     Description: 'Receive an alert, if a ECR Image Scan finding of severity MEDIUM, HIGH, or CRITICAL is created.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   DLMPolicyAlert:
     Description: 'Receive an alert, if a DLM policy fires an alert.'
@@ -259,6 +265,7 @@ Conditions:
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
   CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
   CodePipelineNotificationsEnabled: !Equals [!Ref CodePipelineNotifications, 'true']
+  CodeCommitPullRequestNotificationsEnabled: !Equals [!Ref CodeCommitPullRequestNotifications, 'true']
   CodeBuildFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
   CodeDeployFailedEnabled: !Equals [!Ref CodeDeployFailed, 'true']
   HealthIssueEnabled: !Equals [!Ref HealthIssue, 'true']
@@ -861,6 +868,21 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  CodeCommitPullRequestNotificationsEvent:
+    Condition: CodeCommitPullRequestNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'CodeCommit pull request notifications. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.codecommit'
+        'detail-type':
+        - 'CodeCommit Pull Request State Change'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   CodeBuildFailedEvent:
     Condition: CodeBuildFailedEnabled
     DependsOn: TopicEndpointSubscription
@@ -1327,7 +1349,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.1.0'
+    Value: '2.2.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'

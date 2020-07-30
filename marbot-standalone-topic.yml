@@ -1,5 +1,5 @@
 ---
-# Copyright 2020 widdix GmbH
+# Copyright 2018-2020 widdix GmbH
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'marbot.io: Repeated task (https://github.com/marbot-io/monitoring-jump-start)'
+Description: 'marbot.io: Standalone SNS topic (https://github.com/marbot-io/monitoring-jump-start)'
 Metadata:
   'AWS::CloudFormation::Interface':
     ParameterGroups:
@@ -22,11 +22,6 @@ Metadata:
       Parameters:
       - EndpointId
       - Stage
-    - Label:
-        default: 'Task'
-      Parameters:
-      - ScheduleExpression
-      - Message
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -36,20 +31,7 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
-  ScheduleExpression:
-    Description: 'The scheduling expression determines when and how often a task runs (see https://docs.aws.amazon.com/eventbridge/latest/userguide/scheduled-events.html).'
-    Type: String
-    Default: 'cron(0 12 * * ? *)'
-  Message:
-    Description: 'What needs to be done?'
-    Type: String
-    Default: ''
 Resources:
-  ##########################################################################
-  #                                                                        #
-  #                                 TOPIC                                  #
-  #                                                                        #
-  ##########################################################################
   Topic:
     Type: 'AWS::SNS::Topic'
     Properties: {}
@@ -63,9 +45,33 @@ Resources:
         - Sid: Sid1
           Effect: Allow
           Principal:
-            Service: 'events.amazonaws.com' # Allow CloudWatch Events
+            Service:
+            - 'events.amazonaws.com' # Allow CloudWatch Events
+            - 'budgets.amazonaws.com' # Allow Budget Notifications
+            - 'rds.amazonaws.com' # Allow RDS Events
+            - 's3.amazonaws.com' # Allow S3 Event Notifications
+            - 'backup.amazonaws.com' # Allow Backup Events
+            - 'codestar-notifications.amazonaws.com' # Allow CodeStart Notifications
           Action: 'sns:Publish'
           Resource: !Ref Topic
+        - Sid: Sid2
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms, ElastiCache Notifications, Elastic Beanstalk Notifications, Auto Scaling Notification
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+        - Sid: Sid3
+          Effect: Allow
+          Principal:
+            Service: 'ses.amazonaws.com' # Allow SES Notifications & Events
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:Referer': !Ref 'AWS::AccountId'
       Topics:
       - !Ref Topic
   TopicEndpointSubscription:
@@ -97,7 +103,7 @@ Resources:
         Input: !Sub |
           {
             "Type": "monitoring-jump-start-connection",
-            "StackTemplate": "marbot-repeated-task",
+            "StackTemplate": "marbot-standalone-topic",
             "StackVersion": "1.0.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
@@ -105,33 +111,23 @@ Resources:
             "StackId": "${AWS::StackId}",
             "StackName": "${AWS::StackName}"
           }
-  ##########################################################################
-  #                                                                        #
-  #                                 EVENTS                                 #
-  #                                                                        #
-  ##########################################################################
-  Task:
-    DependsOn: TopicEndpointSubscription
-    Type: 'AWS::Events::Rule'
-    Properties:
-      Description: 'Repeated task. (created by marbot)'
-      ScheduleExpression: !Ref ScheduleExpression
-      State: ENABLED
-      Targets:
-      - Arn: !Ref Topic
-        Id: marbot
-        Input: !Sub |
-          {
-            "Type": "repeated-task",
-            "Message": "${Message}"
-          }
 Outputs:
   StackName:
     Description: 'Stack name.'
     Value: !Sub '${AWS::StackName}'
   StackTemplate:
     Description: 'Stack template.'
-    Value: 'marbot-repeated-task'
+    Value: 'marbot-standalone-topic'
   StackVersion:
     Description: 'Stack version.'
     Value: '1.0.0'
+  TopicName:
+    Description: 'The name of the SNS topic.'
+    Value: !GetAtt 'Topic.TopicName'
+    Export:
+      Name: !Sub '${AWS::StackName}-TopicName'
+  TopicArn:
+    Description: 'The ARN of the SNS topic.'
+    Value: !Ref Topic
+    Export:
+      Name: !Sub '${AWS::StackName}-TopicArn'
