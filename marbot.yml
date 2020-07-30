@@ -210,7 +210,7 @@ Parameters:
   SecurityHubFinding:
     Description: 'Receive an alert, if a SecurityHub finding is created.'
     Type: String
-    Default: false
+    Default: true
     AllowedValues: [true, false]
   OpsWorksDeploymentFailed:
     Description: 'Receive an alert, if an OpsWorks deployment fails.'
