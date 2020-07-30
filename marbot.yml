@@ -205,12 +205,12 @@ Parameters:
   MacieAlert:
     Description: 'Receive an alert, if Macie fires an alert.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   SecurityHubFinding:
     Description: 'Receive an alert, if a SecurityHub finding is created.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   OpsWorksDeploymentFailed:
     Description: 'Receive an alert, if an OpsWorks deployment fails.'
@@ -235,7 +235,7 @@ Parameters:
   ECRImageScanFinding:
     Description: 'Receive an alert, if a ECR Image Scan finding of severity MEDIUM, HIGH, or CRITICAL is created.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   DLMPolicyAlert:
     Description: 'Receive an alert, if a DLM policy fires an alert.'
