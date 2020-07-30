@@ -165,7 +165,7 @@ Parameters:
   GuardDutyFinding:
     Description: 'Receive an alert, if a GuardDuty finding is created.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   EMRFailed:
     Description: 'Receive an alert, if any EMR step or auto scaling policy fails.'
