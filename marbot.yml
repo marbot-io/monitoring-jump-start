@@ -1114,12 +1114,14 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS SecurityHub. (created by marbot)'
+      Description: 'Findings (severity >= high) from AWS SecurityHub. (created by marbot)'
       EventPattern:
         source:
         - 'aws.securityhub'
         'detail-type':
         - 'Security Hub Findings - Imported'
+        detail:
+          findings: # FIXME filter based on severity >= 70
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
