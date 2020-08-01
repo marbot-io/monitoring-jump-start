@@ -1121,7 +1121,9 @@ Resources:
         'detail-type':
         - 'Security Hub Findings - Imported'
         detail:
-          findings: # FIXME filter based on severity >= 70
+          findings:
+            Severity:
+              Normalized: [{numeric: ['>=', 70]}]
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
