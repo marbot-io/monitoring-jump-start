@@ -205,7 +205,7 @@ Parameters:
   MacieAlert:
     Description: 'Receive an alert, if Macie fires an alert.'
     Type: String
-    Default: false
+    Default: true
     AllowedValues: [true, false]
   SecurityHubFinding:
     Description: 'Receive an alert, if a SecurityHub finding is created.'
@@ -1099,12 +1099,15 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts from AWS Macie. (created by marbot)'
+      Description: 'Alerts (risk >= high) from AWS Macie. (created by marbot)'
       EventPattern:
         source:
         - 'aws.macie'
         'detail-type':
         - 'Macie Alert'
+        detail:
+          trigger:
+            risk: [{numeric: ['>=', 8]}]
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
