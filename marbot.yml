@@ -165,7 +165,7 @@ Parameters:
   GuardDutyFinding:
     Description: 'Receive an alert, if a GuardDuty finding is created.'
     Type: String
-    Default: false
+    Default: true
     AllowedValues: [true, false]
   EMRFailed:
     Description: 'Receive an alert, if any EMR step or auto scaling policy fails.'
@@ -960,12 +960,14 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS GuardDuty. (created by marbot)'
+      Description: 'Findings (severity >= high) from AWS GuardDuty. (created by marbot)'
       EventPattern:
         source:
         - 'aws.guardduty'
         'detail-type':
         - 'GuardDuty Finding'
+        detail:
+          severity: [{numeric: ['>=', 7]}]
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
