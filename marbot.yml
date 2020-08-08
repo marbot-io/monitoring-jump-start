@@ -235,7 +235,7 @@ Parameters:
   ECRImageScanFinding:
     Description: 'Receive an alert, if a ECR Image Scan finding of severity MEDIUM, HIGH, or CRITICAL is created.'
     Type: String
-    Default: false
+    Default: true
     AllowedValues: [true, false]
   DLMPolicyAlert:
     Description: 'Receive an alert, if a DLM policy fires an alert.'
@@ -1218,6 +1218,12 @@ Resources:
         - 'aws.ecr'
         'detail-type':
         - 'ECR Image Scan'
+        detail:
+          finding-severity-counts:
+            CRITICAL: [{exists: false}, {numeric: ['>', 0]}]
+            HIGH: [{exists: false}, {numeric: ['>', 0]}]
+            MEDIUM: [{exists: false}, {numeric: ['>', 0]}]
+            UNDEFINED: [{exists: false}, {numeric: ['>', 0]}]
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
