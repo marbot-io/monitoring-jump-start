@@ -52,22 +52,22 @@ Parameters:
     Default: 0.01
     MinValue: -1
   LambdaExecutionErrorThreshold:
-    Description: 'The Lambda@Edge execution error count threshold (set to >=0 to enable).'
+    Description: 'The Lambda@Edge execution error count threshold (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
   LambdaValidationErrorThreshold:
-    Description: 'The Lambda@Edge validation error count threshold (set to >=0 to enable).'
+    Description: 'The Lambda@Edge validation error count threshold (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
   CacheHitRateThreshold:
-    Description: 'The cache hit rate threshold (set treshold to enable, set to -1 to disable, requires detailed monitoring).'
+    Description: 'The cache hit rate threshold (set to -1 to disable, requires detailed monitoring).'
     Type: Number
     Default: -1
     MinValue: -1
   OriginLatenyThreshold:
-    Description: 'The origin latency threshold in ms using the 99.5 percentile (set treshold to enable, set to -1 to disable, requires detailed monitoring).'
+    Description: 'The origin latency threshold in ms using the 99.5 percentile (set to -1 to disable, set to -1 to disable, requires detailed monitoring).'
     Type: Number
     Default: -1
     MinValue: -1
@@ -236,7 +236,7 @@ Resources:
       Namespace: 'AWS/CloudFront'
       OKActions:
       - !Ref Topic
-      Period: 60
+      Period: 900
       Statistic: Average
       Threshold: !Ref CacheHitRateThreshold
       TreatMissingData: notBreaching
@@ -258,7 +258,7 @@ Resources:
       Namespace: 'AWS/CloudFront'
       OKActions:
       - !Ref Topic
-      Period: 60
+      Period: 900
       ExtendedStatistic: 'p99.5'
       Threshold: !Ref OriginLatenyThreshold
       TreatMissingData: notBreaching
