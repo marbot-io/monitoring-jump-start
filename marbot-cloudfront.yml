@@ -62,12 +62,12 @@ Parameters:
     Default: -1
     MinValue: -1
   CacheHitRateThreshold:
-    Description: 'The cache hit rate threshold (set to -1 to disable, requires detailed monitoring).'
+    Description: 'The cache hit rate threshold (set to -1 to disable; requires detailed monitoring).'
     Type: Number
     Default: -1
     MinValue: -1
   OriginLatenyThreshold:
-    Description: 'The origin latency threshold in ms using the 99.5 percentile (set to -1 to disable, set to -1 to disable, requires detailed monitoring).'
+    Description: 'The origin latency threshold in ms using the 99.5 percentile (set to -1 to disable; requires detailed monitoring).'
     Type: Number
     Default: -1
     MinValue: -1
