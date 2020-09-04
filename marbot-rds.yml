@@ -29,6 +29,7 @@ Metadata:
     - Label:
         default: 'Thresholds'
       Parameters:
+      - DBLoadThreshold
       - BurstBalanceThreshold
       - CPUUtilizationThreshold
       - CPUCreditBalanceThreshold
@@ -48,6 +49,12 @@ Parameters:
   DBInstanceIdentifier:
     Description: 'The instance ID of the RDS database instance that you want to monitor.'
     Type: String
+  DBLoadThreshold:
+    Description: 'The maximum database load, set to number of vCPUs (requires RDS Performance Insights; set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 128
   BurstBalanceThreshold:
     Description: 'The minimum percent of General Purpose SSD (gp2) burst-bucket I/O credits available.'
     Type: Number
@@ -86,6 +93,7 @@ Parameters:
     Default: 256000000 # 256 Megabyte in Byte
     MinValue: -1
 Conditions:
+  HasDBLoadThreshold: !Not [!Equals [!Ref DBLoadThreshold, '-1']]
   HasBurstBalanceThreshold: !Not [!Equals [!Ref BurstBalanceThreshold, '-1']]
   HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
   HasCPUCreditBalanceThreshold: !Not [!Equals [!Ref CPUCreditBalanceThreshold, '-1']]
@@ -170,6 +178,27 @@ Resources:
   #                                 ALARMS                                 #
   #                                                                        #
   ##########################################################################
+  DBLoadTooHighAlarm:
+    Condition: HasDBLoadThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Average database load was to high over the last 10 minutes. (created by marbot)'
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+      - Name: DBInstanceIdentifier
+        Value: !Ref DBInstanceIdentifier
+      EvaluationPeriods: 1
+      MetricName: DBLoad
+      Namespace: 'AWS/RDS'
+      OKActions:
+      - !Ref Topic
+      Period: 600
+      Statistic: Average
+      Threshold: !Ref DBLoadThreshold
+      TreatMissingData: notBreaching
   BurstBalanceTooLowAlarm:
     Condition: HasBurstBalanceThreshold
     DependsOn: TopicEndpointSubscription
