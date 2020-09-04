@@ -185,7 +185,7 @@ Resources:
     Properties:
       AlarmActions:
       - !Ref Topic
-      AlarmDescription: 'Average database load was to high over the last 10 minutes. (created by marbot)'
+      AlarmDescription: 'Average database load was too high over the last 10 minutes. (created by marbot)'
       ComparisonOperator: GreaterThanThreshold
       Dimensions:
       - Name: DBInstanceIdentifier
