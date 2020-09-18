@@ -1,0 +1,314 @@
+---
+# Copyright 2018-2020 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: Redshift cluster monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'Redshift'
+      Parameters:
+      - ClusterIdentifier
+      - NodeType
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - CPUUtilizationThreshold
+      - DiskSpaceThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  ClusterIdentifier:
+    Description: 'The cluster ID of the Redshift cluster that you want to monitor.'
+    Type: String
+  NodeType:
+    Description: 'The current Redshift node type.'
+    Type: String
+    AllowedValues:
+    - 'dc2.large'
+    - 'dc2.8xlarge'
+    - 'ds2.xlarge'
+    - 'ds2.8xlarge'
+    - 'ra3.4xlarge'
+    - 'ra3.16xlarge'
+    - 'dc1.large'
+    - 'dc1.8xlarge'
+  CPUUtilizationThreshold:
+    Description: 'The maximum percentage of CPU utilization (set to -1 to disable).'
+    Type: Number
+    Default: 80
+    MinValue: -1
+    MaxValue: 100
+  DiskSpaceThreshold:
+    Description: 'The maximum percentage of used disk space.'
+    Type: Number
+    Default: 90
+    MinValue: 1
+    MaxValue: 100
+Mappings:
+  NodeTypes:
+    'dc2.large':
+      IOCapacity: 0.54 # original value - 10%
+    'dc2.8xlarge':
+      IOCapacity: 6.75
+    'ds2.xlarge':
+      IOCapacity: 0.36
+    'ds2.8xlarge':
+      IOCapacity: 2.97
+    'ra3.4xlarge':
+      IOCapacity: 1.8
+    'ra3.16xlarge':
+      IOCapacity: 7.2
+    'dc1.large':
+      IOCapacity: 0.18
+    'dc1.8xlarge':
+      IOCapacity: 3.33
+Conditions:
+  HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          minDelayTarget: 1
+          maxDelayTarget: 60
+          numRetries: 100
+          numNoDelayRetries: 0
+          backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  MonitoringJumpStartEvent:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
+      ScheduleExpression: 'rate(30 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackTemplate": "marbot-redshift",
+            "StackVersion": "1.0.0",
+            "Partition": "${AWS::Partition}",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
+          }
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  HealthStatusAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Redshift cluster is unhealty. (created by marbot)'
+      Namespace: 'AWS/Redshift'
+      MetricName: HealthStatus
+      Dimensions:
+      - Name: ClusterIdentifier
+        Value: !Ref ClusterIdentifier
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+  MaintenanceModeAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Redshift cluster in maintenance mode. (created by marbot)'
+      Namespace: 'AWS/Redshift'
+      MetricName: MaintenanceMode
+      Dimensions:
+      - Name: ClusterIdentifier
+        Value: !Ref ClusterIdentifier
+      Threshold: 1
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+  DiskSpaceAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Redshift cluster is running out of disk space. (created by marbot)'
+      Namespace: 'AWS/Redshift'
+      MetricName: PercentageDiskSpaceUsed
+      Dimensions:
+      - Name: ClusterIdentifier
+        Value: !Ref ClusterIdentifier
+      Threshold: !Ref DiskSpaceThreshold
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+  SchemaQuotasAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'More than one schema reached their storage quota. (created by marbot)'
+      Namespace: 'AWS/Redshift'
+      MetricName: NumExceededSchemaQuotas
+      Dimensions:
+      - Name: ClusterIdentifier
+        Value: !Ref ClusterIdentifier
+      Threshold: 0
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+  HighCPUUtilizationAlarm:
+    Condition: HasCPUUtilizationThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Redshift cluster experiences high CPU load for more than 15 minutes. (created by marbot)'
+      Namespace: 'AWS/Redshift'
+      MetricName: CPUUtilization
+      Dimensions:
+      - Name: ClusterIdentifier
+        Value: !Ref ClusterIdentifier
+      Threshold: !Ref CPUUtilizationThreshold
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Average
+      Period: 900
+      EvaluationPeriods: 1
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+  HighIOUtilizationAlarm:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Redshift cluster experiences high IO load for more than 15 minutes. (created by marbot)'
+      Metrics:
+      - Id: read
+        Label: ReadThroughput
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/Redshift'
+            MetricName: ReadThroughput
+            Dimensions:
+            - Name: ClusterIdentifier
+              Value: !Ref ClusterIdentifier
+          Period: 300
+          Stat: Average
+          # Unit: Bytes
+        ReturnData: false
+      - Id: write
+        Label: WriteThroughput
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/Redshift'
+            MetricName: WriteThroughput
+            Dimensions:
+            - Name: ClusterIdentifier
+              Value: !Ref ClusterIdentifier
+          Period: 300
+          Stat: Average
+          # Unit: Bytes
+        ReturnData: false
+      - Id: total
+        Label: 'TotalThroughput'
+        Expression: '(read+write)/1000/1000/1000' # GB/s
+        ReturnData: true
+      Threshold: !FindInMap [NodeTypes, !Ref NodeType, IOCapacity]
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 3
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-redshift'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
