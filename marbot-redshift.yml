@@ -32,6 +32,7 @@ Metadata:
       Parameters:
       - CPUUtilizationThreshold
       - DiskSpaceThreshold
+      - ConcurrencyScalingThreshold
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -68,6 +69,11 @@ Parameters:
     Default: 90
     MinValue: 1
     MaxValue: 100
+  ConcurrencyScalingThreshold:
+    Description: 'The maximum number of concurrency scaling seconds per 24 hours (set -1 to disable).'
+    Type: Number
+    Default: 3600
+    MinValue: -1
 Mappings:
   NodeTypes:
     'dc2.large':
@@ -88,6 +94,7 @@ Mappings:
       IOCapacity: 3.33
 Conditions:
   HasCPUUtilizationThreshold: !Not [!Equals [!Ref CPUUtilizationThreshold, '-1']]
+  HasConcurrencyScalingThreshold: !Not [!Equals [!Ref ConcurrencyScalingThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -297,6 +304,27 @@ Resources:
       Threshold: !FindInMap [NodeTypes, !Ref NodeType, IOCapacity]
       ComparisonOperator: GreaterThanThreshold
       EvaluationPeriods: 3
+      AlarmActions:
+      - !Ref Topic
+      OKActions:
+      - !Ref Topic
+      TreatMissingData: notBreaching
+  ConcurrencyScalingAlarm:
+    Condition: HasConcurrencyScalingThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Redshift cluster causes additional costs due to concurrency scaling. (created by marbot)'
+      Namespace: 'AWS/Redshift'
+      MetricName: ConcurrencyScalingSeconds
+      Dimensions:
+      - Name: ClusterIdentifier
+        Value: !Ref ClusterIdentifier
+      Threshold: !Ref ConcurrencyScalingThreshold
+      ComparisonOperator: GreaterThanThreshold
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
       AlarmActions:
       - !Ref Topic
       OKActions:
