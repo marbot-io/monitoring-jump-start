@@ -147,8 +147,6 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
-        throttlePolicy:
-          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
@@ -463,4 +461,4 @@ Outputs:
     Value: 'marbot-ec2-instances'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.3.0'
+    Value: '2.4.0'
