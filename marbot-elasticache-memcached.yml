@@ -125,7 +125,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-elasticache-memcached",
-            "StackVersion": "1.4.0",
+            "StackVersion": "1.5.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",

@@ -142,7 +142,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-ec2-instance",
-            "StackVersion": "2.2.0",
+            "StackVersion": "2.4.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",

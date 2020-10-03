@@ -134,7 +134,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-auto-scaling-group",
-            "StackVersion": "1.1.0",
+            "StackVersion": "1.3.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",

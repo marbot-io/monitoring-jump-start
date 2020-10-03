@@ -117,7 +117,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-sqs-queue",
-            "StackVersion": "1.2.0",
+            "StackVersion": "1.4.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
