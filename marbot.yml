@@ -1124,6 +1124,8 @@ Resources:
             Workflow:
               Status:
               - NEW
+            RecordState:
+            - ACTIVE
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -1357,7 +1359,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.4.0'
+    Value: '2.4.1'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
