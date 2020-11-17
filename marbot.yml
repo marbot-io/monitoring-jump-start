@@ -28,7 +28,7 @@ Metadata:
       Parameters:
       - BudgetThreshold
       - SavingsPlansCoverageThreshold
-      - SavingsPlansUtilzzationThreshold
+      - SavingsPlansUtilizationThreshold
       - TrustedAdvisor
       - RootUserLogin
       - CloudWatchAlarmFired
@@ -90,8 +90,8 @@ Parameters:
     Default: -1
     MinValue: -1
     MaxValue: 100
-  SavingsPlansUtilzzationThreshold:
-    Description: 'Receive an alert, if your monthly Savings Plans utilzzation (in percents) is lower than this value (works in us-east-1 only; set to -1 to disable).'
+  SavingsPlansUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly Savings Plans utilization (in percents) is lower than this value (works in us-east-1 only; set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
@@ -267,7 +267,7 @@ Conditions:
   # Only available in us-east-1
   BudgetEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref BudgetThreshold, '-1']]]
   SavingsPlansCoverageEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref SavingsPlansCoverageThreshold, '-1']]]
-  SavingsPlansUtilzzationEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref SavingsPlansUtilzzationThreshold, '-1']]]
+  SavingsPlansUtilizationEnabled: !And [!Condition NorthVirginia, !Not [!Equals [!Ref SavingsPlansUtilizationThreshold, '-1']]]
   AMIUpdateNotificationECSOptimizedEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationECSOptimized, 'true']]
   AMIUpdateNotificationAmazonLinuxEnabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux, 'true']]
   AMIUpdateNotificationAmazonLinux2Enabled: !And [!Condition NorthVirginia, !Equals [!Ref AMIUpdateNotificationAmazonLinux2, 'true']]
@@ -603,8 +603,8 @@ Resources:
       Budget:
         TimeUnit: MONTHLY
         BudgetType: SAVINGS_PLANS_COVERAGE
-  SavingsPlansUtilzzation:
-    Condition: SavingsPlansUtilzzationEnabled
+  SavingsPlansUtilization:
+    Condition: SavingsPlansUtilizationEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Budgets::Budget'
     Properties:
@@ -615,7 +615,7 @@ Resources:
         Notification:
           ComparisonOperator: 'LESS_THAN'
           NotificationType: ACTUAL
-          Threshold: !Ref SavingsPlansUtilzzationThreshold
+          Threshold: !Ref SavingsPlansUtilizationThreshold
           ThresholdType: PERCENTAGE
       Budget:
         TimeUnit: MONTHLY

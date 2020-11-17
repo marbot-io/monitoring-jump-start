@@ -26,27 +26,27 @@ Metadata:
         default: 'Amazon Elastic Compute Cloud - Compute'
       Parameters:
       - Ec2RiCoverageThreshold
-      - Ec2RiUtilzzationThreshold
+      - Ec2RiUtilizationThreshold
     - Label:
         default: 'Amazon Redshift'
       Parameters:
       - RedshiftRiCoverageThreshold
-      - RedshiftRiUtilzzationThreshold
+      - RedshiftRiUtilizationThreshold
     - Label:
         default: 'Amazon Relational Database Service'
       Parameters:
       - RdsRiCoverageThreshold
-      - RdsRiUtilzzationThreshold
+      - RdsRiUtilizationThreshold
     - Label:
         default: 'Amazon ElastiCache'
       Parameters:
       - ElastiCacheRiCoverageThreshold
-      - ElastiCacheRiUtilzzationThreshold
+      - ElastiCacheRiUtilizationThreshold
     - Label:
         default: 'Amazon Elasticsearch Service'
       Parameters:
       - ElasticsearchRiCoverageThreshold
-      - ElasticsearchRiUtilzzationThreshold
+      - ElasticsearchRiUtilizationThreshold
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -62,8 +62,8 @@ Parameters:
     Default: -1
     MinValue: -1
     MaxValue: 100
-  Ec2RiUtilzzationThreshold:
-    Description: 'Receive an alert, if your monthly EC2 Reserved Instance utilzzation (in percents) is lower than this value (set to -1 to disable).'
+  Ec2RiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly EC2 Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
@@ -74,8 +74,8 @@ Parameters:
     Default: -1
     MinValue: -1
     MaxValue: 100
-  RedshiftRiUtilzzationThreshold:
-    Description: 'Receive an alert, if your monthly Redshift Reserved Instance utilzzation (in percents) is lower than this value (set to -1 to disable).'
+  RedshiftRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly Redshift Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
@@ -86,8 +86,8 @@ Parameters:
     Default: -1
     MinValue: -1
     MaxValue: 100
-  RdsRiUtilzzationThreshold:
-    Description: 'Receive an alert, if your monthly RDS Reserved Instance utilzzation (in percents) is lower than this value (set to -1 to disable).'
+  RdsRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly RDS Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
@@ -98,8 +98,8 @@ Parameters:
     Default: -1
     MinValue: -1
     MaxValue: 100
-  ElastiCacheRiUtilzzationThreshold:
-    Description: 'Receive an alert, if your monthly ElastiCache Reserved Instance utilzzation (in percents) is lower than this value (set to -1 to disable).'
+  ElastiCacheRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly ElastiCache Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
@@ -110,23 +110,23 @@ Parameters:
     Default: -1
     MinValue: -1
     MaxValue: 100
-  ElasticsearchRiUtilzzationThreshold:
-    Description: 'Receive an alert, if your monthly Elasticsearch Reserved Instance utilzzation (in percents) is lower than this value (set to -1 to disable).'
+  ElasticsearchRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly Elasticsearch Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
     Type: Number
     Default: -1
     MinValue: -1
     MaxValue: 100
 Conditions:
   Ec2RiCoverageEnabled: !Not [!Equals [!Ref Ec2RiCoverageThreshold, '-1']]
-  Ec2RiUtilzzationEnabled: !Not [!Equals [!Ref Ec2RiUtilzzationThreshold, '-1']]
+  Ec2RiUtilizationEnabled: !Not [!Equals [!Ref Ec2RiUtilizationThreshold, '-1']]
   RedshiftRiCoverageEnabled: !Not [!Equals [!Ref RedshiftRiCoverageThreshold, '-1']]
-  RedshiftRiUtilzzationEnabled: !Not [!Equals [!Ref RedshiftRiUtilzzationThreshold, '-1']]
+  RedshiftRiUtilizationEnabled: !Not [!Equals [!Ref RedshiftRiUtilizationThreshold, '-1']]
   RdsRiCoverageEnabled: !Not [!Equals [!Ref RdsRiCoverageThreshold, '-1']]
-  RdsRiUtilzzationEnabled: !Not [!Equals [!Ref RdsRiUtilzzationThreshold, '-1']]
+  RdsRiUtilizationEnabled: !Not [!Equals [!Ref RdsRiUtilizationThreshold, '-1']]
   ElastiCacheRiCoverageEnabled: !Not [!Equals [!Ref ElastiCacheRiCoverageThreshold, '-1']]
-  ElastiCacheRiUtilzzationEnabled: !Not [!Equals [!Ref ElastiCacheRiUtilzzationThreshold, '-1']]
+  ElastiCacheRiUtilizationEnabled: !Not [!Equals [!Ref ElastiCacheRiUtilizationThreshold, '-1']]
   ElasticsearchRiCoverageEnabled: !Not [!Equals [!Ref ElasticsearchRiCoverageThreshold, '-1']]
-  ElasticsearchRiUtilzzationEnabled: !Not [!Equals [!Ref ElasticsearchRiUtilzzationThreshold, '-1']]
+  ElasticsearchRiUtilizationEnabled: !Not [!Equals [!Ref ElasticsearchRiUtilizationThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -212,8 +212,8 @@ Resources:
         CostFilters:
           Service:
           - 'Amazon Elastic Compute Cloud - Compute'
-  Ec2RiUtilzzation:
-    Condition: Ec2RiUtilzzationEnabled
+  Ec2RiUtilization:
+    Condition: Ec2RiUtilizationEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Budgets::Budget'
     Properties:
@@ -224,7 +224,7 @@ Resources:
         Notification:
           ComparisonOperator: 'LESS_THAN'
           NotificationType: ACTUAL
-          Threshold: !Ref Ec2RiUtilzzationThreshold
+          Threshold: !Ref Ec2RiUtilizationThreshold
           ThresholdType: PERCENTAGE
       Budget:
         TimeUnit: MONTHLY
@@ -252,8 +252,8 @@ Resources:
         CostFilters:
           Service:
           - 'Amazon Redshift'
-  RedshiftRiUtilzzation:
-    Condition: RedshiftRiUtilzzationEnabled
+  RedshiftRiUtilization:
+    Condition: RedshiftRiUtilizationEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Budgets::Budget'
     Properties:
@@ -264,7 +264,7 @@ Resources:
         Notification:
           ComparisonOperator: 'LESS_THAN'
           NotificationType: ACTUAL
-          Threshold: !Ref RedshiftRiUtilzzationThreshold
+          Threshold: !Ref RedshiftRiUtilizationThreshold
           ThresholdType: PERCENTAGE
       Budget:
         TimeUnit: MONTHLY
@@ -292,8 +292,8 @@ Resources:
         CostFilters:
           Service:
           - 'Amazon Relational Database Service'
-  RdsRiUtilzzation:
-    Condition: RdsRiUtilzzationEnabled
+  RdsRiUtilization:
+    Condition: RdsRiUtilizationEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Budgets::Budget'
     Properties:
@@ -304,7 +304,7 @@ Resources:
         Notification:
           ComparisonOperator: 'LESS_THAN'
           NotificationType: ACTUAL
-          Threshold: !Ref RdsRiUtilzzationThreshold
+          Threshold: !Ref RdsRiUtilizationThreshold
           ThresholdType: PERCENTAGE
       Budget:
         TimeUnit: MONTHLY
@@ -332,8 +332,8 @@ Resources:
         CostFilters:
           Service:
           - 'Amazon ElastiCache'
-  ElastiCacheRiUtilzzation:
-    Condition: ElastiCacheRiUtilzzationEnabled
+  ElastiCacheRiUtilization:
+    Condition: ElastiCacheRiUtilizationEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Budgets::Budget'
     Properties:
@@ -344,7 +344,7 @@ Resources:
         Notification:
           ComparisonOperator: 'LESS_THAN'
           NotificationType: ACTUAL
-          Threshold: !Ref ElastiCacheRiUtilzzationThreshold
+          Threshold: !Ref ElastiCacheRiUtilizationThreshold
           ThresholdType: PERCENTAGE
       Budget:
         TimeUnit: MONTHLY
@@ -372,8 +372,8 @@ Resources:
         CostFilters:
           Service:
           - 'Amazon Elasticsearch Service'
-  ElasticsearchRiUtilzzation:
-    Condition: ElasticsearchRiUtilzzationEnabled
+  ElasticsearchRiUtilization:
+    Condition: ElasticsearchRiUtilizationEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Budgets::Budget'
     Properties:
@@ -384,7 +384,7 @@ Resources:
         Notification:
           ComparisonOperator: 'LESS_THAN'
           NotificationType: ACTUAL
-          Threshold: !Ref ElasticsearchRiUtilzzationThreshold
+          Threshold: !Ref ElasticsearchRiUtilizationThreshold
           ThresholdType: PERCENTAGE
       Budget:
         TimeUnit: MONTHLY
