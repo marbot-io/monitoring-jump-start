@@ -1,0 +1,404 @@
+---
+# Copyright 2018-2020 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: AWS Reserved Instance (RI) monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'Amazon Elastic Compute Cloud - Compute'
+      Parameters:
+      - Ec2RiCoverageThreshold
+      - Ec2RiUtilizationThreshold
+    - Label:
+        default: 'Amazon Redshift'
+      Parameters:
+      - RedshiftRiCoverageThreshold
+      - RedshiftRiUtilizationThreshold
+    - Label:
+        default: 'Amazon Relational Database Service'
+      Parameters:
+      - RdsRiCoverageThreshold
+      - RdsRiUtilizationThreshold
+    - Label:
+        default: 'Amazon ElastiCache'
+      Parameters:
+      - ElastiCacheRiCoverageThreshold
+      - ElastiCacheRiUtilizationThreshold
+    - Label:
+        default: 'Amazon Elasticsearch Service'
+      Parameters:
+      - ElasticsearchRiCoverageThreshold
+      - ElasticsearchRiUtilizationThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  Ec2RiCoverageThreshold:
+    Description: 'Receive an alert, if your monthly EC2 Reserved Instance coverage (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  Ec2RiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly EC2 Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  RedshiftRiCoverageThreshold:
+    Description: 'Receive an alert, if your monthly Redshift Reserved Instance coverage (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  RedshiftRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly Redshift Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  RdsRiCoverageThreshold:
+    Description: 'Receive an alert, if your monthly RDS Reserved Instance coverage (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  RdsRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly RDS Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  ElastiCacheRiCoverageThreshold:
+    Description: 'Receive an alert, if your monthly ElastiCache Reserved Instance coverage (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  ElastiCacheRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly ElastiCache Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  ElasticsearchRiCoverageThreshold:
+    Description: 'Receive an alert, if your monthly Elasticsearch Reserved Instance coverage (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+  ElasticsearchRiUtilizationThreshold:
+    Description: 'Receive an alert, if your monthly Elasticsearch Reserved Instance utilization (in percents) is lower than this value (set to -1 to disable).'
+    Type: Number
+    Default: -1
+    MinValue: -1
+    MaxValue: 100
+Conditions:
+  Ec2RiCoverageEnabled: !Not [!Equals [!Ref Ec2RiCoverageThreshold, '-1']]
+  Ec2RiUtilizationEnabled: !Not [!Equals [!Ref Ec2RiUtilizationThreshold, '-1']]
+  RedshiftRiCoverageEnabled: !Not [!Equals [!Ref RedshiftRiCoverageThreshold, '-1']]
+  RedshiftRiUtilizationEnabled: !Not [!Equals [!Ref RedshiftRiUtilizationThreshold, '-1']]
+  RdsRiCoverageEnabled: !Not [!Equals [!Ref RdsRiCoverageThreshold, '-1']]
+  RdsRiUtilizationEnabled: !Not [!Equals [!Ref RdsRiUtilizationThreshold, '-1']]
+  ElastiCacheRiCoverageEnabled: !Not [!Equals [!Ref ElastiCacheRiCoverageThreshold, '-1']]
+  ElastiCacheRiUtilizationEnabled: !Not [!Equals [!Ref ElastiCacheRiUtilizationThreshold, '-1']]
+  ElasticsearchRiCoverageEnabled: !Not [!Equals [!Ref ElasticsearchRiCoverageThreshold, '-1']]
+  ElasticsearchRiUtilizationEnabled: !Not [!Equals [!Ref ElasticsearchRiUtilizationThreshold, '-1']]
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            Service:
+            - 'budgets.amazonaws.com' # Allow Budget Notifications
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          minDelayTarget: 1
+          maxDelayTarget: 60
+          numRetries: 100
+          numNoDelayRetries: 0
+          backoffFunction: exponential
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  MonitoringJumpStartEvent:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
+      ScheduleExpression: 'rate(30 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackTemplate": "marbot-reserved-instance",
+            "StackVersion": "1.0.0",
+            "Partition": "${AWS::Partition}",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
+          }
+  ##########################################################################
+  #                                                                        #
+  #                                 BUDGET                                 #
+  #                                                                        #
+  ##########################################################################
+  Ec2RiCoverage:
+    Condition: Ec2RiCoverageEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref Ec2RiCoverageThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_COVERAGE
+        CostFilters:
+          Service:
+          - 'Amazon Elastic Compute Cloud - Compute'
+  Ec2RiUtilization:
+    Condition: Ec2RiUtilizationEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref Ec2RiUtilizationThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_UTILIZATION
+        CostFilters:
+          Service:
+          - 'Amazon Elastic Compute Cloud - Compute'
+  RedshiftRiCoverage:
+    Condition: RedshiftRiCoverageEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref RedshiftRiCoverageThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_COVERAGE
+        CostFilters:
+          Service:
+          - 'Amazon Redshift'
+  RedshiftRiUtilization:
+    Condition: RedshiftRiUtilizationEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref RedshiftRiUtilizationThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_UTILIZATION
+        CostFilters:
+          Service:
+          - 'Amazon Redshift'
+  RdsRiCoverage:
+    Condition: RdsRiCoverageEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref RdsRiCoverageThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_COVERAGE
+        CostFilters:
+          Service:
+          - 'Amazon Relational Database Service'
+  RdsRiUtilization:
+    Condition: RdsRiUtilizationEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref RdsRiUtilizationThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_UTILIZATION
+        CostFilters:
+          Service:
+          - 'Amazon Relational Database Service'
+  ElastiCacheRiCoverage:
+    Condition: ElastiCacheRiCoverageEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref ElastiCacheRiCoverageThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_COVERAGE
+        CostFilters:
+          Service:
+          - 'Amazon ElastiCache'
+  ElastiCacheRiUtilization:
+    Condition: ElastiCacheRiUtilizationEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref ElastiCacheRiUtilizationThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_UTILIZATION
+        CostFilters:
+          Service:
+          - 'Amazon ElastiCache'
+  ElasticsearchRiCoverage:
+    Condition: ElasticsearchRiCoverageEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref ElasticsearchRiCoverageThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_COVERAGE
+        CostFilters:
+          Service:
+          - 'Amazon Elasticsearch Service'
+  ElasticsearchRiUtilization:
+    Condition: ElasticsearchRiUtilizationEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Budgets::Budget'
+    Properties:
+      NotificationsWithSubscribers:
+      - Subscribers:
+        - SubscriptionType: SNS
+          Address: !Ref Topic
+        Notification:
+          ComparisonOperator: 'LESS_THAN'
+          NotificationType: ACTUAL
+          Threshold: !Ref ElasticsearchRiUtilizationThreshold
+          ThresholdType: PERCENTAGE
+      Budget:
+        TimeUnit: MONTHLY
+        BudgetType: RI_UTILIZATION
+        CostFilters:
+          Service:
+          - 'Amazon Elasticsearch Service'
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-reserved-instance'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'

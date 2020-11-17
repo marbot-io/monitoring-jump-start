@@ -25,5 +25,5 @@ jobs:
         AWS_DEFAULT_REGION: 'eu-west-1'
       run: |
         python -m pip install --upgrade pip
-        pip install awscli==1.18.71
+        pip install awscli==1.18.179
         aws s3 sync . s3://monitoring-jump-start --exclude '*' --include '*.yml' --include 'data/*'
