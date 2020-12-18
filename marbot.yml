@@ -362,6 +362,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
@@ -508,6 +510,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:177427601217:ecs-optimized-amazon-ami-update'
@@ -523,6 +527,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-ami-updates'
@@ -538,6 +544,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-2-ami-updates'
@@ -1518,7 +1526,7 @@ Outputs:
     Description: 'Stack template.'
     Value: 'marbot'
   StackVersion:
-    Description: 'Stack version.'
+    Description: 'Stack version
     Value: '2.6.0'
   TopicName:
     Description: 'The name of the SNS topic.'
