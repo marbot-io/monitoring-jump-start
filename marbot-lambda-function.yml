@@ -100,6 +100,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
@@ -117,7 +119,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-lambda-function",
-            "StackVersion": "1.1.0",
+            "StackVersion": "1.1.1",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -182,4 +184,4 @@ Outputs:
     Value: 'marbot-lambda-function'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.0'
+    Value: '1.1.1'

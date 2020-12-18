@@ -147,6 +147,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
@@ -164,7 +166,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-ec2-instances",
-            "StackVersion": "2.4.0",
+            "StackVersion": "2.4.1",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -461,4 +463,4 @@ Outputs:
     Value: 'marbot-ec2-instances'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.4.0'
+    Value: '2.4.1'

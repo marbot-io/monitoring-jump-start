@@ -362,6 +362,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: !Ref Topic
@@ -379,7 +381,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "2.5.0",
+            "StackVersion": "2.5.1",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -508,6 +510,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:177427601217:ecs-optimized-amazon-ami-update'
@@ -523,6 +527,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-ami-updates'
@@ -538,6 +544,8 @@ Resources:
           numRetries: 100
           numNoDelayRetries: 0
           backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
       Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
       Protocol: https
       TopicArn: 'arn:aws:sns:us-east-1:137112412989:amazon-linux-2-ami-updates'
@@ -1407,7 +1415,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.5.0'
+    Value: '2.5.1'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
