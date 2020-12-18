@@ -1526,7 +1526,7 @@ Outputs:
     Description: 'Stack template.'
     Value: 'marbot'
   StackVersion:
-    Description: 'Stack version
+    Description: 'Stack version.'
     Value: '2.6.0'
   TopicName:
     Description: 'The name of the SNS topic.'
