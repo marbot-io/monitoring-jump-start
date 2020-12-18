@@ -381,7 +381,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "2.5.1",
+            "StackVersion": "2.6.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -685,7 +685,7 @@ Resources:
       PolicyName: lambda
       Roles:
       - !Ref CloudWatchAlarmFilterRole
-  CloudWatchAlarmFilterFunction:
+  CloudWatchAlarmFilterFunction: # Filter out alarms to trigger autoscaling actions
     Condition: CloudWatchAlarmEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Lambda::Function'
@@ -1162,6 +1162,116 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  SecurityHubWorkflowRole:
+    Condition: SecurityHubFindingEnabled
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: 'lambda.amazonaws.com'
+          Action: 'sts:AssumeRole'
+      Policies:
+      - PolicyName: workflow
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: 'securityhub:BatchUpdateFindings'
+            Resource: '*'
+  SecurityHubWorkflowPolicy:
+    Condition: SecurityHubFindingEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'logs:CreateLogStream'
+          - 'logs:PutLogEvents'
+          Resource: !GetAtt 'SecurityHubWorkflowLogGroup.Arn'
+      PolicyName: lambda
+      Roles:
+      - !Ref SecurityHubWorkflowRole
+  SecurityHubWorkflowFunction: # Set workflow status to notified
+    Condition: SecurityHubFindingEnabled
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      Handler: 'index.handler'
+      Runtime: 'nodejs12.x'
+      MemorySize: 1024
+      Timeout: 30
+      Role: !GetAtt 'SecurityHubWorkflowRole.Arn'
+      Code:
+        ZipFile: |
+          'use strict';
+          const AWS = require('aws-sdk')
+          const securityhub = new AWS.SecurityHub({apiVersion: '2018-10-26'});
+          exports.handler = async (event) => {
+            console.log(JSON.stringify(event));
+            await securityhub.batchUpdateFindings({
+              FindingIdentifiers: event.detail.findings.map((finding) => ({
+                Id: finding.Id,
+                ProductArn: finding.ProductArn
+              })),
+              Workflow: {
+                Status: 'NOTIFIED'
+              }
+            }).promise();
+          };
+  SecurityHubWorkflowAlarmErrorsTooHigh:
+    Condition: SecurityHubFindingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Invocations failed due to errors in the function'
+      Namespace: 'AWS/Lambda'
+      MetricName: Errors
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - !Ref Topic
+      Dimensions:
+      - Name: FunctionName
+        Value: !Ref SecurityHubWorkflowFunction
+  SecurityHubWorkflowAlarmThrottlesTooHigh:
+    Condition: SecurityHubFindingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Invocation attempts that were throttled due to invocation rates exceeding the concurrent limits'
+      Namespace: 'AWS/Lambda'
+      MetricName: Throttles
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      TreatMissingData: notBreaching
+      AlarmActions:
+      - !Ref Topic
+      Dimensions:
+      - Name: FunctionName
+        Value: !Ref SecurityHubWorkflowFunction
+  SecurityHubWorkflowLogGroup:
+    Condition: SecurityHubFindingEnabled
+    Type: 'AWS::Logs::LogGroup'
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${SecurityHubWorkflowFunction}'
+      RetentionInDays: 14
+  SecurityHubWorkflowPermissionFindingEvent:
+    Condition: SecurityHubFindingEnabled
+    Type: 'AWS::Lambda::Permission'
+    Properties:
+      Action: 'lambda:InvokeFunction'
+      FunctionName: !Ref SecurityHubWorkflowFunction
+      Principal: 'events.amazonaws.com'
+      SourceArn: !GetAtt 'SecurityHubFindingEvent.Arn'
   SecurityHubFindingEvent:
     Condition: SecurityHubFindingEnabled
     DependsOn: TopicEndpointSubscription
@@ -1186,6 +1296,8 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+      - Arn: !GetAtt 'SecurityHubWorkflowFunction.Arn'
+        Id: marbot-securityhub
   OpsWorksDeploymentFailedEvent:
     Condition: OpsWorksDeploymentFailedEnabled
     DependsOn: TopicEndpointSubscription
@@ -1415,7 +1527,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.5.1'
+    Value: '2.6.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
