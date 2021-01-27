@@ -25,8 +25,8 @@ jobs:
         python -m pip install --upgrade pip
         pip install yamllint==1.25.0
         pip install cfn-lint==0.40.0
-        wget https://github.com/mikefarah/yq/releases/download/v4.4.1/yq_linux_amd64 -O /usr/bin/yq
-        chmod +x /usr/bin/yq
+        sudo wget https://github.com/mikefarah/yq/releases/download/v4.4.1/yq_linux_amd64 -O /usr/bin/yq
+        sudo chmod +x /usr/bin/yq
         yamllint *.yml
         cfn-lint -t *.yml
         find . -name 'marbot*.yml' | while read file; do set -ex && grep -q "LICENSE-2.0" "$file"; done;
