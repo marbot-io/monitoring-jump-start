@@ -21,7 +21,7 @@ jobs:
 
     - name: Script
       run: |
-        apt-get install jq
+        sudo apt-get install jq
         python -m pip install --upgrade pip
         pip install yamllint==1.25.0
         pip install cfn-lint==0.40.0
