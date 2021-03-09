@@ -329,6 +329,7 @@ Resources:
             - 's3.amazonaws.com' # Allow S3 Event Notifications
             - 'backup.amazonaws.com' # Allow Backup Events
             - 'codestar-notifications.amazonaws.com' # Allow CodeStart Notifications
+            - 'devops-guru.amazonaws.com' # Allow DevOps Guru Notifications
           Action: 'sns:Publish'
           Resource: !Ref Topic
         - Sid: Sid2
@@ -381,7 +382,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "2.6.0",
+            "StackVersion": "2.7.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1527,7 +1528,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.6.0'
+    Value: '2.7.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
