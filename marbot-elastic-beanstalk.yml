@@ -239,7 +239,7 @@ Resources:
           Action: 'sts:AssumeRole'
       ManagedPolicyArns:
       - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-      - 'arn:aws:iam::aws:policy/AWSElasticBeanstalkFullAccess'
+      - 'arn:aws:iam::aws:policy/AdministratorAccess-AWSElasticBeanstalk'
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -249,4 +249,4 @@ Outputs:
     Value: 'marbot-elastic-beanstalk'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.4.1'
+    Value: '1.4.2'
