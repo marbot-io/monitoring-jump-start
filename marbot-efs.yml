@@ -174,7 +174,12 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::CloudWatch::Alarm'
     Properties:
+      AlarmActions:
+      - !Ref Topic
       AlarmDescription: 'Throughput over last 10 minutes too high, performance is likely impacted. (created by marbot)'
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 6
+      EvaluationPeriods: 10
       Metrics:
       - Id: m1
         Label: MeteredIOBytes
@@ -214,12 +219,9 @@ Resources:
         Id: e3
         Label: 'Throughput utilization (%)'
         ReturnData: true
-      EvaluationPeriods: 10
-      DatapointsToAlarm: 6
-      ComparisonOperator: GreaterThanThreshold
+      OKActions:
+      - !Ref Topic
       Threshold: !Ref ThroughputThreshold
-      AlarmActions:
-      - {'Fn::ImportValue': !Sub '${ParentAlertStack}-TopicARN'}
 Outputs:
   StackName:
     Description: 'Stack name.'
