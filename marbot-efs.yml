@@ -47,8 +47,14 @@ Parameters:
     Type: Number
     Default: 192000000000 # 192 GB in Bytes (last hour where you can burst at 100 MB/sec)
     MinValue: -1
+  ThroughputThreshold:
+    Description: 'The maximum percentage of throughput utilization (set to -1 to disable).'
+    Type: Number
+    Default: 80
+    MinValue: -1
 Conditions:
   HasBurstCreditBalanceThreshold: !Not [!Equals [!Ref BurstCreditBalanceThreshold, '-1']]
+  HasThroughputThreshold: !Not [!Equals [!Ref ThroughputThreshold, '-1']]
 Resources:
   ##########################################################################
   #                                                                        #
@@ -112,7 +118,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-efs",
-            "StackVersion": "1.2.1",
+            "StackVersion": "1.3.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -163,6 +169,59 @@ Resources:
       Period: 600
       Statistic: Maximum
       Threshold: 95
+  ThroughputAlarm: # https://docs.aws.amazon.com/efs/latest/ug/monitoring-metric-math.html#metric-math-throughput-utilization
+    Condition: HasThroughputThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Throughput over last 10 minutes too high, performance is likely impacted. (created by marbot)'
+      ComparisonOperator: GreaterThanThreshold
+      DatapointsToAlarm: 6
+      EvaluationPeriods: 10
+      Metrics:
+      - Id: m1
+        Label: MeteredIOBytes
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EFS'
+            MetricName: MeteredIOBytes
+            Dimensions:
+            - Name: FileSystemId
+              Value: !Ref FileSystemId
+          Period: 60
+          Stat: Sum
+          Unit: Bytes
+        ReturnData: false
+      - Id: m2
+        Label: PermittedThroughput
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/EFS'
+            MetricName: PermittedThroughput
+            Dimensions:
+            - Name: FileSystemId
+              Value: !Ref FileSystemId
+          Period: 60
+          Stat: Sum
+          Unit: 'Bytes/Second'
+        ReturnData: false
+      - Expression: '(m1/1048576)/PERIOD(m1)'
+        Id: e1
+        Label: e1
+        ReturnData: false
+      - Expression: 'm2/1048576'
+        Id: e2
+        Label: e2
+        ReturnData: false
+      - Expression: '((e1)*100)/(e2)'
+        Id: e3
+        Label: 'Throughput utilization (%)'
+        ReturnData: true
+      OKActions:
+      - !Ref Topic
+      Threshold: !Ref ThroughputThreshold
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -172,4 +231,4 @@ Outputs:
     Value: 'marbot-efs'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.2.1'
+    Value: '1.3.0'
