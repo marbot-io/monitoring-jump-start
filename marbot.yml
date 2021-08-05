@@ -98,17 +98,17 @@ Parameters:
     MinValue: -1
     MaxValue: 100
   AMIUpdateNotificationECSOptimized:
-    Description: 'Receive an alert, if a new ECS optimized AMI is released (works in us-east-1 only).'
+    Description: 'Receive a notification, if a new ECS optimized AMI is released (works in us-east-1 only).'
     Type: String
     Default: false
     AllowedValues: [true, false]
   AMIUpdateNotificationAmazonLinux:
-    Description: 'Receive an alert, if a new Amazon Linux AMI is released (works in us-east-1 only).'
+    Description: 'Receive a notification, if a new Amazon Linux AMI is released (works in us-east-1 only).'
     Type: String
     Default: false
     AllowedValues: [true, false]
   AMIUpdateNotificationAmazonLinux2:
-    Description: 'Receive an alert, if a new Amazon Linux 2 AMI is released (works in us-east-1 only).'
+    Description: 'Receive a notification, if a new Amazon Linux 2 AMI is released (works in us-east-1 only).'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -263,7 +263,7 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   ACMCertificateApproachingExpiration:
-    Description: 'Receive an notificatrion, if an ACM certificate approaches expiration.'
+    Description: 'Receive a notification, if an ACM certificate approaches expiration.'
     Type: String
     Default: true
     AllowedValues: [true, false]
