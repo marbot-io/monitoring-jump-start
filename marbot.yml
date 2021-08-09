@@ -59,6 +59,8 @@ Metadata:
       - DLMPolicyAlert
       - IoTAnalyticsDatasetAlert
       - ESSoftwareUpdateFailed
+      - BackupFailed
+      - AthenaFailed
     - Label:
         default: 'Notifications'
       Parameters:
@@ -70,6 +72,7 @@ Metadata:
       - ACMCertificateApproachingExpiration
       - ESSoftwareUpdateNotifications
       - ApplicationAutoScalingNotifications
+      - BackupNotifications
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -291,6 +294,21 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  BackupFailed:
+    Description: 'Receive an alert, if AWS Backup fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  BackupNotifications:
+    Description: 'Receive notifications about AWS Backup activities.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  AthenaFailed:
+    Description: 'Receive an alert, if Athena fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -338,6 +356,9 @@ Conditions:
   ESSoftwareUpdateFailedEnabled: !Equals [!Ref ESSoftwareUpdateFailed, 'true']
   ESSoftwareUpdateNotificationsEnabled: !Equals [!Ref ESSoftwareUpdateNotifications, 'true']
   ApplicationAutoScalingNotificationsEnabled: !Equals [!Ref ApplicationAutoScalingNotifications, 'true']
+  BackupFailedEnabled: !Equals [!Ref BackupFailed, 'true']
+  BackupNotificationsEnabled: !Equals [!Ref BackupNotifications, 'true']
+  AthenaFailedEnabled: !Equals [!Ref AthenaFailed, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -1547,6 +1568,64 @@ Resources:
         - 'aws.application-autoscaling'
         'detail-type':
         - 'Application Auto Scaling Scaling Activity State Change'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  BackupFailedEvent:
+    Condition: BackupFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'AWS Backup failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.backup'
+        'detail-type':
+        - 'Backup Job State Change'
+        - 'Copy Job State Change'
+        - 'Restore Job State Change'
+        detail:
+          state:
+          - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  BackupNotificationsEvent:
+    Condition: BackupNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Notifications from AWS Backup. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.backup'
+        'detail-type':
+        - 'Backup Job State Change'
+        - 'Copy Job State Change'
+        - 'Restore Job State Change'
+        detail:
+          state:
+          - COMPLETED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  AthenaFailedEvent:
+    Condition: AthenaFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Athena failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.athena'
+        'detail-type':
+        - 'Athena Query State Change'
+        detail:
+          currentState:
+          - FAILED
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
