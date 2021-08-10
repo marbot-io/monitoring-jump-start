@@ -62,6 +62,7 @@ Metadata:
       - BackupFailed
       - AthenaFailed
       - AppFlowFailed
+      - EC2FleetFailed
     - Label:
         default: 'Notifications'
       Parameters:
@@ -315,6 +316,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  EC2FleetFailed:
+    Description: 'Receive an alert, if EC2 (Spot) Fleet fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -369,6 +375,7 @@ Conditions:
   BackupNotificationsEnabled: !Equals [!Ref BackupNotifications, 'true']
   AthenaFailedEnabled: !Equals [!Ref AthenaFailed, 'true']
   AppFlowFailedEnabled: !Equals [!Ref AppFlowFailed, 'true']
+  EC2FleetFailedEnabled: !Equals [!Ref EC2FleetFailed, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -1686,6 +1693,36 @@ Resources:
         'detail-type':
         - 'AppFlow Event Flow Deactivated'
         - 'AppFlow Scheduled Flow Deactivated'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  EC2FleetFailedEvent:
+    Condition: EC2FleetFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'EC2 Fleet failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ec2fleet'
+        'detail-type':
+        - 'EC2 Fleet Error'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  EC2SpotFleetFailedEvent:
+    Condition: EC2FleetFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'EC2 Spot Fleet failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ec2spotfleet'
+        'detail-type':
+        - 'EC2 Spot Fleet Error'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
