@@ -335,8 +335,11 @@ Conditions:
   BatchFailedEnabled: !Equals [!Ref BatchFailed, 'true']
   CodePipelineFailedEnabled: !Equals [!Ref CodePipelineFailed, 'true']
   CodePipelineNotificationsEnabled: !Equals [!Ref CodePipelineNotifications, 'true']
+  CodePipelineNotificationsDisabled: !Not [!Condition CodePipelineNotificationsEnabled]
   CodeCommitPullRequestNotificationsEnabled: !Equals [!Ref CodeCommitPullRequestNotifications, 'true']
   CodeBuildFailedEnabled: !Equals [!Ref CodeBuildFailed, 'true']
+  CodeBuildFailedEnabledAndCodePipelineFailedEnabled: !And [!Condition CodeBuildFailedEnabled, !Condition CodePipelineNotificationsEnabled]
+  CodeBuildFailedEnabledAndCodePipelineFailedDisabled: !And [!Condition CodeBuildFailedEnabled, !Condition CodePipelineNotificationsDisabled]
   CodeDeployFailedEnabled: !Equals [!Ref CodeDeployFailed, 'true']
   HealthIssueEnabled: !Equals [!Ref HealthIssue, 'true']
   AutoScalingFailedEnabled: !Equals [!Ref AutoScalingFailed, 'true']
@@ -995,8 +998,28 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  CodeBuildFailedWithoutInitiatorCodePipelineEvent:
+    Condition: CodeBuildFailedEnabledAndCodePipelineFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'A CodeBuild build failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.codebuild'
+        'detail-type':
+        - 'CodeBuild Build State Change'
+        detail:
+          'build-status':
+          - FAILED
+          'additional-information':
+            initiator: [{'anything-but': {'prefix': 'codepipeline/'}}]
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   CodeBuildFailedEvent:
-    Condition: CodeBuildFailedEnabled
+    Condition: CodeBuildFailedEnabledAndCodePipelineFailedDisabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
