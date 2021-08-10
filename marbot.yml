@@ -61,6 +61,7 @@ Metadata:
       - ESSoftwareUpdateFailed
       - BackupFailed
       - AthenaFailed
+      - AppFlowFailed
     - Label:
         default: 'Notifications'
       Parameters:
@@ -309,6 +310,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  AppFlowFailed:
+    Description: 'Receive an alert, if AppFlow fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -359,6 +365,7 @@ Conditions:
   BackupFailedEnabled: !Equals [!Ref BackupFailed, 'true']
   BackupNotificationsEnabled: !Equals [!Ref BackupNotifications, 'true']
   AthenaFailedEnabled: !Equals [!Ref AthenaFailed, 'true']
+  AppFlowFailedEnabled: !Equals [!Ref AppFlowFailed, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -1036,10 +1043,6 @@ Resources:
         - 'aws.health'
         'detail-type':
         - 'AWS Health Event'
-        detail:
-          'eventTypeCategory':
-          - issue
-          - scheduledChange
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -1626,6 +1629,40 @@ Resources:
         detail:
           currentState:
           - FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  AppFlowFailedEvent:
+    Condition: AppFlowFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'AppFlow failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.appflow'
+        'detail-type':
+        - 'AppFlow End Flow Run Report'
+        detail:
+          status:
+          - 'Execution Failed'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  AppFlowDeactivatedEvent:
+    Condition: AppFlowFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'AppFlow deactivated. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.appflow'
+        'detail-type':
+        - 'AppFlow Event Flow Deactivated'
+        - 'AppFlow Scheduled Flow Deactivated'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
