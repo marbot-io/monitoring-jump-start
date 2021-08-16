@@ -121,7 +121,7 @@ Resources:
           Effect: Allow
           Principal:
             Service:
-            - 'events.amazonaws.com' # Allow CloudWatch Events
+            - 'events.amazonaws.com' # Allow EventBridge
             - 'rds.amazonaws.com' # Allow RDS Events
           Action: 'sns:Publish'
           Resource: !Ref Topic

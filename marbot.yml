@@ -396,7 +396,7 @@ Resources:
           Effect: Allow
           Principal:
             Service:
-            - 'events.amazonaws.com' # Allow CloudWatch Events
+            - 'events.amazonaws.com' # Allow EventBridge
             - 'budgets.amazonaws.com' # Allow Budget Notifications
             - 'rds.amazonaws.com' # Allow RDS Events
             - 's3.amazonaws.com' # Allow S3 Event Notifications

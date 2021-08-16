@@ -61,7 +61,7 @@ Resources:
         - Sid: Sid1
           Effect: Allow
           Principal:
-            Service: 'events.amazonaws.com' # Allow CloudWatch Events
+            Service: 'events.amazonaws.com' # Allow EventBridge
           Action: 'sns:Publish'
           Resource: !Ref Topic
         - Sid: Sid2
