@@ -1548,7 +1548,7 @@ Resources:
         - 'aws.acm'
         'detail-type':
         - 'ACM Certificate Approaching Expiration'
-        detail:  
+        detail:
           DaysToExpiry: [1, 2, 3, 7, 14, 21, 28, 35, 42, 49, 56, 63, 70]
       State: ENABLED
       Targets:
