@@ -1628,7 +1628,7 @@ Resources:
         detail:
           State:
           - ACTIVE
-          Categories: 
+          Categories:
           - FAULT
       State: ENABLED
       Targets:
