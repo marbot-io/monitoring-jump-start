@@ -44,6 +44,10 @@ Metadata:
       - EMRFailed
       - EBSFailed
       - SSMFailed
+      - SSMAutomationFailed
+      - SSMConfigurationComplianceFailed
+      - SSMCommandFailed
+      - SSMStateManagerFailed
       - RDSIssue
       - GlueJobFailed
       - EC2SpotInstanceInterruption
@@ -202,8 +206,28 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
-  SSMFailed:
-    Description: 'Receive an alert, if any SSM maintenance window execution fails.'
+  SSMFailed: # should be called SSMMaintenanceWindowFailed, but was not changed for backward compatibility
+    Description: 'Receive an alert, if any SSM Maintenance Window execution fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  SSMAutomationFailed:
+    Description: 'Receive an alert, if any SSM Automation execution fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  SSMConfigurationComplianceFailed:
+    Description: 'Receive an alert, if any SSM Configuration Compliance check fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  SSMCommandFailed:
+    Description: 'Receive an alert, if any SSM Command execution fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  SSMStateManagerFailed:
+    Description: 'Receive an alert, if any SSM State Manager association fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -358,7 +382,11 @@ Conditions:
   GuardDutyFindingEnabled: !Equals [!Ref GuardDutyFinding, 'true']
   EMRFailedEnabled: !Equals [!Ref EMRFailed, 'true']
   EBSFailedEnabled: !Equals [!Ref EBSFailed, 'true']
-  SSMFailedEnabled: !Equals [!Ref SSMFailed, 'true']
+  SSMFailedEnabled: !Equals [!Ref SSMFailed, 'true'] # should be called SSMMaintenanceWindowFailedEnabled, but was not changed for backward compatibility
+  SSMAutomationFailedEnabled: !Equals [!Ref SSMAutomationFailed, 'true']
+  SSMConfigurationComplianceFailedEnabled: !Equals [!Ref SSMConfigurationComplianceFailed, 'true']
+  SSMCommandFailedEnabled: !Equals [!Ref SSMCommandFailed, 'true']
+  SSMStateManagerFailedEnabled: !Equals [!Ref SSMStateManagerFailed, 'true']
   RDSIssueEnabled: !Equals [!Ref RDSIssue, 'true']
   GlueJobFailedEnabled: !Equals [!Ref GlueJobFailed, 'true']
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
@@ -1156,12 +1184,12 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
-  SSMFailedEvent:
+  SSMFailedEvent: # should be called SSMMaintenanceWindowFailedEvent, but was not changed for backward compatibility
     Condition: SSMFailedEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'SSM maintenance window execution failed. (created by marbot)'
+      Description: 'SSM Maintenance Window execution failed. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ssm'
@@ -1171,6 +1199,85 @@ Resources:
           status:
           - FAILED
           - TIMED_OUT
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  SSMAutomationFailedEvent:
+    Condition: SSMAutomationFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'SSM Automation execution failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ssm'
+        'detail-type':
+        - 'EC2 Automation Execution Status-change Notification'
+        detail:
+          status:
+          - Failed
+          - TimedOut
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  SSMConfigurationComplianceFailedEvent:
+    Condition: SSMConfigurationComplianceFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'SSM Configuration Compliance check failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ssm'
+        'detail-type':
+        - 'Configuration Compliance State Change'
+        detail:
+          'compliance-status':
+          - non_compliant
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  SSMCommandFailedEvent:
+    Condition: SSMCommandFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'SSM Command execution failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ssm'
+        'detail-type':
+        - 'EC2 Command Status-change Notification'
+        detail:
+          status:
+          - 'Delivery Timed Out'
+          - 'Execution Timed Out'
+          - Failed
+          - Incomplete
+          - 'Rate Exceeded'
+          - 'Access Denied'
+          - 'No Instances In Tag'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  SSMStateManagerFailedEvent:
+    Condition: SSMStateManagerFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'SSM State Manager association failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ssm'
+        'detail-type':
+        - 'EC2 State Manager Association State Change'
+        detail:
+          status:
+          - Failed
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
