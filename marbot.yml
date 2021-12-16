@@ -52,6 +52,7 @@ Metadata:
       - GlueJobFailed
       - EC2SpotInstanceInterruption
       - ECSServiceFailed
+      - ECSServiceFailed
       - MacieAlert
       - SecurityHubFinding
       - SecurityHubInsight
@@ -80,6 +81,7 @@ Metadata:
       - ESSoftwareUpdateNotifications
       - ApplicationAutoScalingNotifications
       - BackupNotifications
+      - ECSDeploymentNotifications
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -251,6 +253,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  ECSDeploymentFailed:
+    Description: 'Receive an alert, if any ECS deployment fails.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   MacieAlert:
     Description: 'Receive an alert, if Macie fires an alert.'
     Type: String
@@ -351,6 +358,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  ECSDeploymentNotifications:
+    Description: 'Receive notifications when AWS deployments succeed.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -391,6 +403,7 @@ Conditions:
   GlueJobFailedEnabled: !Equals [!Ref GlueJobFailed, 'true']
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
+  ECSDeploymentFailedEnabled: !Equals [!Ref ECSDeploymentFailed, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
   SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
   SecurityHubInsightEnabled: !Equals [!Ref SecurityHubInsight, 'true']
@@ -411,6 +424,7 @@ Conditions:
   AthenaFailedEnabled: !Equals [!Ref AthenaFailed, 'true']
   AppFlowFailedEnabled: !Equals [!Ref AppFlowFailed, 'true']
   EC2FleetFailedEnabled: !Equals [!Ref EC2FleetFailed, 'true']
+  ECSDeploymentNotificationsEnabled: !Equals [!Ref ECSDeploymentNotifications, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -1345,6 +1359,42 @@ Resources:
           eventType:
           - ERROR
           - WARN
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  ECSDeploymentFailedEvent:
+    Condition: ECSDeploymentFailedEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'ECS Deployment failed. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ecs'
+        'detail-type':
+        - 'ECS Deployment State Change'
+        detail:
+          eventName:
+          - SERVICE_DEPLOYMENT_FAILED
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  ECSDeploymentNotificationsEvent:
+    Condition: ECSDeploymentNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'ECS Service deployment succeeded. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ecs'
+        'detail-type':
+        - 'ECS Deployment State Change'
+        detail:
+          eventName:
+          - SERVICE_DEPLOYMENT_COMPLETED
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
