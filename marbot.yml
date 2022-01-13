@@ -341,7 +341,7 @@ Parameters:
   BackupNotifications:
     Description: 'Receive notifications about AWS Backup activities.'
     Type: String
-    Default: true
+    Default: false
     AllowedValues: [true, false]
   AthenaFailed:
     Description: 'Receive an alert, if Athena fails.'
