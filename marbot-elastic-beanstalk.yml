@@ -23,10 +23,23 @@ Metadata:
       - EndpointId
       - Stage
     - Label:
-        default: 'Elastic Beanstalk'
+        default: 'Elastic Beanstalk status changes'
       Parameters:
-      - ApplicationName
-      - EnvironmentName
+      - ElasticBeanstalkResourceStatusChange
+      - OtherResourceStatusChange
+      - HealthStatusChange
+      - ManagedUpdateStatusChange
+    - Label:
+        default: 'Elastic Beanstalk severities'
+      Parameters:
+      - InfoSeverity
+      - WarnSeverity
+      - ErrorSeverity
+    - Label:
+        default: 'Elastic Beanstalk applications and environments'
+      Parameters:
+      - ApplicationNames
+      - EnvironmentNames
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
