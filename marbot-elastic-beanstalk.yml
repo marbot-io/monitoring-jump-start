@@ -36,223 +36,145 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
-  ApplicationName:
-    Description: 'The name of the Elastic Beanstalk application.'
+  ElasticBeanstalkResourceStatusChange:
+    Description: 'Do you want to get notified about Elastic Beanstalk resource status changes (e.g., environment?'
     Type: String
-  EnvironmentName:
-    Description: 'The name of the Elastic Beanstalk environment.'
+    Default: true
+    AllowedValues: [true, false]
+  OtherResourceStatusChange:
+    Description: 'Do you want to get notified about other resource status changes (e.g., Auto Scaling Group, Instance, ...)?'
     Type: String
+    Default: true
+    AllowedValues: [true, false]
+  HealthStatusChange:
+    Description: 'Do you want to get notified about health status changes?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  ManagedUpdateStatusChange:
+    Description: 'Do you want to get notified about managed update health status changes?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  InfoSeverity:
+    Description: 'Do you want to receive status changes with severity INFO'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  WarnSeverity:
+    Description: 'Do you want to receive status changes with severity WARN'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  ErrorSeverity:
+    Description: 'Do you want to receive status changes with severity ERROR'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  ApplicationNames:
+    Description: 'Which applications do you want to monitor? Use * to monitor all environments in the region.'
+    Type: CommaDelimitedList
+    Default: '*'
+  EnvironmentNames:
+    Description: 'Which environments do you want to monitor? Use * to monitor all environments in the region.'
+    Type: CommaDelimitedList
+    Default: '*'
+Conditions:
+  ElasticBeanstalkResourceStatusChangeEnabled: !Equals [!Ref ElasticBeanstalkResourceStatusChange, 'true']
+  OtherResourceStatusChangeEnabled: !Equals [!Ref OtherResourceStatusChange, 'true']
+  HealthStatusChangeEnabled: !Equals [!Ref HealthStatusChange, 'true']
+  ManagedUpdateStatusChangeEnabled: !Equals [!Ref ManagedUpdateStatusChange, 'true']
+  InfoSeverityEnabled: !Equals [!Ref InfoSeverity, 'true']
+  WarnSeverityEnabled: !Equals [!Ref WarnSeverity, 'true']
+  ErrorSeverityEnabled: !Equals [!Ref ErrorSeverity, 'true']
+  ApplicationNamesAll: !Equals [!Join ['', !Ref ApplicationNames], '*']
+  EnvironmentNamesAll: !Equals [!Join ['', !Ref EnvironmentNames], '*']
 Resources:
-  ##########################################################################
-  #                                                                        #
-  #                                 TOPIC                                  #
-  #                                                                        #
-  ##########################################################################
-  Topic:
-    Type: 'AWS::SNS::Topic'
-    Properties: {}
-  TopicPolicy:
-    Type: 'AWS::SNS::TopicPolicy'
+  Connection:
+    Type: 'AWS::Events::Connection'
     Properties:
-      PolicyDocument:
-        Id: Id1
+      AuthorizationType: 'API_KEY'
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: 'X-API-Key'
+          ApiKeyValue: !Ref Stage
+      Description: 'marbot'
+  Destination:
+    Type: 'AWS::Events::ApiDestination'
+    Properties:
+      ConnectionArn: !GetAtt 'Connection.Arn'
+      Description: 'Forwards notifiations and alarms to marbot'
+      HttpMethod: 'POST'
+      InvocationEndpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      InvocationRateLimitPerSecond: 1 # API rate limit = 0.2 req/sec baseline and 10 req/sec burst
+  EventRuleRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Sid: Sid1
-          Effect: Allow
+        - Effect: 'Allow'
           Principal:
-            Service: 'events.amazonaws.com' # Allow EventBridge
-          Action: 'sns:Publish'
-          Resource: !Ref Topic
-        - Sid: Sid2
-          Effect: Allow
-          Principal:
-            AWS: '*' # Allow Elastic Beanstalk Notifications
-          Action: 'sns:Publish'
-          Resource: !Ref Topic
-          Condition:
-            StringEquals:
-              'AWS:SourceOwner': !Ref 'AWS::AccountId'
-      Topics:
-      - !Ref Topic
-  TopicEndpointSubscription:
-    DependsOn: TopicPolicy
-    Type: 'AWS::SNS::Subscription'
+            Service:
+            - 'events.amazonaws.com'
+          Action:
+          - sts:AssumeRole
+      Path: '/service-role/'
+      Policies:
+      - PolicyName: eventbridge
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: 'Allow'
+            Action:
+            - 'events:InvokeApiDestination'
+            Resource: !GetAtt 'Destination.Arn'
+  MonitoringElasticBeanstalk:
+    Type: 'AWS::Events::Rule'
     Properties:
-      DeliveryPolicy:
-        healthyRetryPolicy:
-          minDelayTarget: 1
-          maxDelayTarget: 60
-          numRetries: 100
-          numNoDelayRetries: 0
-          backoffFunction: exponential
-        throttlePolicy:
-          maxReceivesPerSecond: 1
-      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
-      Protocol: https
-      TopicArn: !Ref Topic
+      Description: 'Monitoring Elastic Beanstalk. (created by marbot)'
+      State: ENABLED
+      EventPattern:
+        source:
+        - aws.elasticbeanstalk
+        detail-type:
+        - !If [ElasticBeanstalkResourceStatusChangeEnabled, 'Elastic Beanstalk resource status change', !Ref 'AWS::NoValue']
+        - !If [OtherResourceStatusChangeEnabled, 'Other resource status change', !Ref 'AWS::NoValue']
+        - !If [HealthStatusChangeEnabled, 'Health status change', !Ref 'AWS::NoValue']
+        - !If [ManagedUpdateStatusChangeEnabled, 'Managed update status change', !Ref 'AWS::NoValue']
+        detail:
+          Severity:
+          - !If [InfoSeverityEnabled, 'INFO', !Ref 'AWS::NoValue']
+          - !If [WarnSeverityEnabled, 'WARN', !Ref 'AWS::NoValue']
+          - !If [ErrorSeverityEnabled, 'ERROR', !Ref 'AWS::NoValue']
+          ApplicationName: !If [ApplicationNamesAll, !Ref 'AWS::NoValue', !Ref ApplicationNames]
+          EnvironmentName: !If [EnvironmentNamesAll, !Ref 'AWS::NoValue', !Ref EnvironmentNames]
+      Targets:
+      - Arn: !GetAtt Destination.Arn
+        Id: marbot
+        RoleArn: !GetAtt 'EventRuleRole.Arn'
   MonitoringJumpStartEvent:
-    DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
-      - Arn: !Ref Topic
+      - Arn: !GetAtt Destination.Arn
         Id: marbot
+        RoleArn: !GetAtt 'EventRuleRole.Arn'
         Input: !Sub |
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-elastic-beanstalk",
-            "StackVersion": "1.4.3",
+            "StackVersion": "1.5.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
             "StackId": "${AWS::StackId}",
             "StackName": "${AWS::StackName}"
           }
-  NotificationTopicConfiguration:
-    DependsOn: TopicEndpointSubscription
-    Type: 'Custom::NotificationTopicConfiguration'
-    Version: '1.0'
-    Properties:
-      ServiceToken: !GetAtt 'CustomNotificationTopicConfigurationFunction.Arn'
-      ApplicationName: !Ref ApplicationName
-      EnvironmentName: !Ref EnvironmentName
-      NotificationTopicArn: !Ref Topic
-  ##########################################################################
-  #                                                                        #
-  #                            CUSTOM RESOURCES                            #
-  #                                                                        #
-  ##########################################################################
-  CustomNotificationTopicConfigurationFunction: # needs no monitoring because it is used as a custom resource
-    Type: 'AWS::Lambda::Function'
-    Properties:
-      Code:
-        ZipFile: |
-          'use strict';
-          const response = require('cfn-response');
-          const AWS = require('aws-sdk');
-          const elasticbeanstalk = new AWS.ElasticBeanstalk({apiVersion: '2010-12-01'});
-          exports.handler = (event, context, cb) => {
-            console.log(JSON.stringify(event));
-            const debug = (data) => {
-              console.log(JSON.stringify(data));
-              return data;
-            };
-            const sleep = (ms) => {
-              return new Promise(resolve => setTimeout(resolve, ms));
-            };
-            const wait = (applicationName, environmentName) => {
-              return elasticbeanstalk.describeEnvironments({
-                ApplicationName: applicationName,
-                EnvironmentNames: [environmentName]
-              }).promise()
-                .then((data) => {
-                  if (data.Environments.length === 1) {
-                    if (data.Environments[0].Status === 'Ready') {
-                      return data.Environments[0];
-                    } else if (data.Environments[0].Status === 'Updating'){
-                      debug(data.Environments[0]);
-                      return sleep(5000).then(() => wait(applicationName, environmentName));
-                    } else {
-                      throw new Error(`Unexpected status: ${data.Environments[0].Status}`);
-                    }
-                  } else {
-                    throw new Error(`Environment not found`);
-                  }
-                });
-            }
-            const update = (applicationName, environmentName, notificationTopicArn) => {
-              return elasticbeanstalk.updateEnvironment({
-                 ApplicationName: applicationName,
-                 EnvironmentName: environmentName,
-                 OptionSettings: [{
-                   Namespace: 'aws:elasticbeanstalk:sns:topics',
-                   OptionName: 'Notification Topic ARN',
-                   Value: notificationTopicArn
-                 }]
-              }).promise()
-                .then(debug)
-                .then(() => wait(event.ResourceProperties.ApplicationName, event.ResourceProperties.EnvironmentName))
-                .then(debug);
-            };
-            const remove = (applicationName, environmentName) => {
-              return elasticbeanstalk.updateEnvironment({
-                ApplicationName: applicationName,
-                EnvironmentName: environmentName,
-                OptionsToRemove: [{
-                  Namespace: 'aws:elasticbeanstalk:sns:topics',
-                  OptionName: 'Notification Topic ARN'
-                }]
-              }).promise()
-                .then(debug)
-                .then(() => wait(applicationName, environmentName))
-                .then(debug);
-            };
-            const failed = (err) => {
-              console.log(JSON.stringify(err));
-              response.send(event, context, response.FAILED, {});
-            };
-            const success = (data) => {
-              debug(data);
-              response.send(event, context, response.SUCCESS, {});
-            };
-            if (event.RequestType === 'Create') {
-              update(event.ResourceProperties.ApplicationName, event.ResourceProperties.EnvironmentName, event.ResourceProperties.NotificationTopicArn)
-                .then(success)
-                .catch(failed);
-            } else if (event.RequestType === 'Update') {
-              if (event.OldResourceProperties.ApplicationName !== event.ResourceProperties.ApplicationName || event.OldResourceProperties.EnvironmentName !== event.ResourceProperties.EnvironmentName) {
-                remove(event.OldResourceProperties.ApplicationName, event.OldResourceProperties.EnvironmentName)
-                  .then(() => update(event.ResourceProperties.ApplicationName, event.ResourceProperties.EnvironmentName, event.ResourceProperties.NotificationTopicArn))
-                  .then(success)
-                  .catch(failed);
-              } else {
-                update(event.ResourceProperties.ApplicationName, event.ResourceProperties.EnvironmentName, event.ResourceProperties.NotificationTopicArn)
-                  .then(success)
-                  .catch(failed);
-              }
-            } else if (event.RequestType === 'Delete') {
-              remove(event.ResourceProperties.ApplicationName, event.ResourceProperties.EnvironmentName)
-                .then(success)
-                .catch(failed);
-            } else {
-              failed(new Error(`unsupported RequestType: ${event.RequestType}`));
-            }
-          };
-      Handler: 'index.handler'
-      MemorySize: 128
-      Role: !GetAtt 'CustomNotificationTopicConfigurationRole.Arn'
-      Runtime: 'nodejs12.x'
-      Timeout: 300
-  CustomNotificationTopicConfigurationRole:
-    Type: 'AWS::IAM::Role'
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: 'lambda.amazonaws.com'
-          Action: 'sts:AssumeRole'
-      ManagedPolicyArns:
-      - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
-      - 'arn:aws:iam::aws:policy/AdministratorAccess-AWSElasticBeanstalk'
-      Policies:
-      - PolicyName: sns # see https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/using-features.managing.sns.html#configuration-notifications-namespace
-        PolicyDocument:
-          Version: '2012-10-17'
-          Statement:
-          - Effect: Allow
-            Action:
-            - 'sns:SetTopicAttributes'
-            - 'sns:GetTopicAttributes'
-            - 'sns:Subscribe'
-            - 'sns:Unsubscribe'
-            - 'sns:Publish'
-            Resource: !Ref Topic
+
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -262,4 +184,4 @@ Outputs:
     Value: 'marbot-elastic-beanstalk'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.4.3'
+    Value: '1.5.0'
