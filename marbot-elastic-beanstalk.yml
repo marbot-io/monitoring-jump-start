@@ -149,7 +149,7 @@ Resources:
       State: ENABLED
       EventPattern:
         source:
-        - aws.elasticbeanstalk
+        - 'aws.elasticbeanstalk'
         detail-type:
         - !If [ElasticBeanstalkResourceStatusChangeEnabled, 'Elastic Beanstalk resource status change', !Ref 'AWS::NoValue']
         - !If [OtherResourceStatusChangeEnabled, 'Other resource status change', !Ref 'AWS::NoValue']

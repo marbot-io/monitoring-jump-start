@@ -365,7 +365,7 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   ElasticBeanstalkFailed:
-    Description: 'Receive notifications when Elastic Beanstalk fails.'
+    Description: 'Receive an alert, if Elastic Beanstalk fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -1928,7 +1928,7 @@ Resources:
       Description: 'Elastic Beanstalk notifications. (created by marbot)'
       EventPattern:
         source:
-        - aws.elasticbeanstalk
+        - 'aws.elasticbeanstalk'
         detail-type:
         - 'Elastic Beanstalk resource status change'
         - 'Other resource status change'
