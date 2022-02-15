@@ -110,7 +110,7 @@ Resources:
       AuthParameters:
         ApiKeyAuthParameters:
           ApiKeyName: 'X-API-Key'
-          ApiKeyValue: !Ref Stage
+          ApiKeyValue: !Ref EndpointId
       Description: 'marbot'
   Destination:
     Type: 'AWS::Events::ApiDestination'
