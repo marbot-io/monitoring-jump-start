@@ -23,8 +23,8 @@ jobs:
       run: |
         sudo apt-get install jq
         python -m pip install --upgrade pip
-        pip install yamllint==1.26.1
-        pip install cfn-lint==0.52.0
+        pip install yamllint==1.26.3
+        pip install cfn-lint==0.61.0
         sudo wget --quiet --output-document=/usr/bin/yq https://github.com/mikefarah/yq/releases/download/v4.4.1/yq_linux_amd64
         sudo chmod +x /usr/bin/yq
         yamllint *.yml
