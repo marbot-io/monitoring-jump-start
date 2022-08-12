@@ -1,0 +1,341 @@
+---
+# Copyright 2018-2020 widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: NAT gateway monitoring (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'NAT Gateway'
+      Parameters:
+      - NatGatewayId
+    - Label:
+        default: 'Thresholds'
+      Parameters:
+      - ErrorPortAllocationThreshold
+      - PacketsDropCountThreshold
+      - BandwidthUtilizationThreshold
+      - PacketsUtilizationThreshold
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  NatGatewayId:
+    Description: 'The NAT gateway ID that you want to monitor.'
+    Type: String
+  ErrorPortAllocationThreshold:
+    Description: 'The maximum port allocation errors (set to -1 to disable).'
+    Type: Number
+    Default: 0
+    MinValue: -1
+  PacketsDropCountThreshold:
+    Description: 'The maximum packet drops (set to -1 to disable).'
+    Type: Number
+    Default: 0
+    MinValue: -1
+  BandwidthUtilizationThreshold:
+    Description: 'The maximum percentage of bandwidth utilization (set to -1 to disable).'
+    Type: Number
+    Default: 80
+    MinValue: -1
+    MaxValue: 100
+  PacketsUtilizationThreshold:
+    Description: 'The maximum percentage of packets utilization (set to -1 to disable).'
+    Type: Number
+    Default: 80
+    MinValue: -1
+    MaxValue: 100
+Conditions:
+  HasErrorPortAllocationThreshold: !Not [!Equals [!Ref ErrorPortAllocationThreshold, '-1']]
+  HasPacketsDropCountThreshold: !Not [!Equals [!Ref PacketsDropCountThreshold, '-1']]
+  HasBandwidthUtilizationThreshold: !Not [!Equals [!Ref BandwidthUtilizationThreshold, '-1']]
+  HasPacketsUtilizationThreshold: !Not [!Equals [!Ref PacketsUtilizationThreshold, '-1']]
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                 TOPIC                                  #
+  #                                                                        #
+  ##########################################################################
+  Topic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  TopicPolicy:
+    Type: 'AWS::SNS::TopicPolicy'
+    Properties:
+      PolicyDocument:
+        Id: Id1
+        Version: '2012-10-17'
+        Statement:
+        - Sid: Sid1
+          Effect: Allow
+          Principal:
+            Service: 'events.amazonaws.com' # Allow EventBridge
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+        - Sid: Sid2
+          Effect: Allow
+          Principal:
+            AWS: '*' # Allow CloudWatch Alarms
+          Action: 'sns:Publish'
+          Resource: !Ref Topic
+          Condition:
+            StringEquals:
+              'AWS:SourceOwner': !Ref 'AWS::AccountId'
+      Topics:
+      - !Ref Topic
+  TopicEndpointSubscription:
+    DependsOn: TopicPolicy
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      DeliveryPolicy:
+        healthyRetryPolicy:
+          minDelayTarget: 1
+          maxDelayTarget: 60
+          numRetries: 100
+          numNoDelayRetries: 0
+          backoffFunction: exponential
+        throttlePolicy:
+          maxReceivesPerSecond: 1
+      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      Protocol: https
+      TopicArn: !Ref Topic
+  MonitoringJumpStartEvent:
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
+      ScheduleExpression: 'rate(30 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackTemplate": "marbot-nat-gateway",
+            "StackVersion": "1.0.0",
+            "Partition": "${AWS::Partition}",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
+          }
+  ##########################################################################
+  #                                                                        #
+  #                                 ALARMS                                 #
+  #                                                                        #
+  ##########################################################################
+  ErrorPortAllocationTooHighAlarm:
+    Condition: HasErrorPortAllocationThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Errors allocating a source port over last 10 minutes too high. Too many concurrent connections are open through the NAT gateway. (created by marbot)'
+      Namespace: 'AWS/NATGateway'
+      MetricName: ErrorPortAllocation
+      Statistic: Sum
+      Period: 600
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: !Ref ErrorPortAllocationThreshold
+      Dimensions:
+      - Name: NatGatewayId
+        Value: !Ref NatGatewayId
+  PacketsDropCountTooHighAlarm:
+    Condition: HasPacketsDropCountThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Dropped packets over last 10 minutes too high. This might indicate an ongoing transient issue with the NAT gateway. (created by marbot)'
+      Namespace: 'AWS/NATGateway'
+      MetricName: PacketsDropCount
+      Statistic: Sum
+      Period: 600
+      EvaluationPeriods: 1
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: !Ref PacketsDropCountThreshold
+      Dimensions:
+      - Name: NatGatewayId
+        Value: !Ref NatGatewayId
+  BandwidthUtilizationTooHighAlarm:
+    Condition: HasBandwidthUtilizationThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Bandwidth utilization too high. (created by marbot)'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: 'in1'
+        Label: 'InFromDestination'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: BytesInFromDestination # bytes per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Bytes
+        ReturnData: false
+      - Id: 'in2'
+        Label: 'InFromSource'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: BytesInFromSource # bytes per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Bytes
+        ReturnData: false
+      - Id: 'out1'
+        Label: 'OutToDestination'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: BytesOutToDestination # bytes per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Bytes
+        ReturnData: false
+      - Id: 'out2'
+        Label: 'OutToSource'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: BytesOutToSource # bytes per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Bytes
+        ReturnData: false
+      - Expression: '(in1+in2+out1+out2)/60*8/1000/1000/1000' # to Gbit/s
+        Id: 'bandwidth'
+        Label: 'Bandwidth'
+        ReturnData: false
+      - Expression: 'bandwidth/45*100' # hard limit is 45 Gbit/s
+        Id: 'utilization'
+        Label: 'Utilization'
+        ReturnData: true
+      Threshold: !Ref BandwidthUtilizationThreshold
+      TreatMissingData: notBreaching
+  PacketsUtilizationTooHighAlarm:
+    Condition: HasPacketsUtilizationThreshold
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmActions:
+      - !Ref Topic
+      AlarmDescription: 'Packets utilization too high. (created by marbot)'
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      Metrics:
+      - Id: 'in1'
+        Label: 'InFromDestination'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: PacketsInFromDestination # packets per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Count
+        ReturnData: false
+      - Id: 'in2'
+        Label: 'InFromSource'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: PacketsInFromSource # packets per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Count
+        ReturnData: false
+      - Id: 'out1'
+        Label: 'OutToDestination'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: PacketsOutToDestination # packets per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Count
+        ReturnData: false
+      - Id: 'out2'
+        Label: 'OutToSource'
+        MetricStat:
+          Metric:
+            Namespace: 'AWS/NATGateway'
+            MetricName: PacketsOutToSource # packets per minute
+            Dimensions:
+            - Name: NatGatewayId
+              Value: !Ref NatGatewayId
+          Period: 60
+          Stat: Sum
+          Unit: Count
+        ReturnData: false
+      - Expression: '(in1+in2+out1+out2)/60' # to packets per second
+        Id: 'packets'
+        Label: 'Packets'
+        ReturnData: false
+      - Expression: 'packets/4000000*100' # hard limit is 4,000,000 packets per second
+        Id: 'utilization'
+        Label: 'Utilization'
+        ReturnData: true
+      Threshold: !Ref PacketsUtilizationThreshold
+      TreatMissingData: notBreaching
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-nat-gateway'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'
