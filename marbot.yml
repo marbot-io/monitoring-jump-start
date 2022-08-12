@@ -51,7 +51,6 @@ Metadata:
       - RDSIssue
       - GlueJobFailed
       - EC2SpotInstanceInterruption
-      - EC2SpotInstanceRebalanceRecommendation
       - ECSServiceFailed
       - ECSDeploymentFailed
       - MacieAlert
@@ -250,11 +249,6 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
-  EC2SpotInstanceRebalanceRecommendation:
-    Description: 'Receive a notification, if any EC2 Spot instance is likely interrupted and should be rebalanced.'
-    Type: String
-    Default: true
-    AllowedValues: [true, false]
   ECSServiceFailed:
     Description: 'Receive an alert, if any ECS service fails.'
     Type: String
@@ -414,7 +408,6 @@ Conditions:
   RDSIssueEnabled: !Equals [!Ref RDSIssue, 'true']
   GlueJobFailedEnabled: !Equals [!Ref GlueJobFailed, 'true']
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
-  EC2SpotInstanceRebalanceRecommendationEnabled: !Equals [!Ref EC2SpotInstanceRebalanceRecommendation, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   ECSDeploymentFailedEnabled: !Equals [!Ref ECSDeploymentFailed, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
@@ -1354,20 +1347,6 @@ Resources:
         - 'aws.ec2'
         'detail-type':
         - 'EC2 Spot Instance Interruption Warning'
-      State: ENABLED
-      Targets:
-      - Arn: !Ref Topic
-        Id: marbot
-  EC2SpotInstanceRebalanceRecommendationEvent:
-    Condition: EC2SpotInstanceRebalanceRecommendationEnabled
-    DependsOn: TopicEndpointSubscription
-    Type: 'AWS::Events::Rule'
-    Properties:
-      Description: 'EC2 Spot instance is likely interrupted and should be rebalanced. (created by marbot)'
-      EventPattern:
-        source:
-        - 'aws.ec2'
-        'detail-type':
         - 'EC2 Instance Rebalance Recommendation'
       State: ENABLED
       Targets:
