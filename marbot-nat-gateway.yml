@@ -135,7 +135,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-nat-gateway",
-            "StackVersion": "1.0.0",
+            "StackVersion": "1.0.1",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -250,7 +250,7 @@ Resources:
         Id: 'bandwidth'
         Label: 'Bandwidth'
         ReturnData: false
-      - Expression: 'bandwidth/45*100' # hard limit is 45 Gbit/s
+      - Expression: 'bandwidth/100*100' # hard limit is 100 Gbit/s
         Id: 'utilization'
         Label: 'Utilization'
         ReturnData: true
@@ -323,7 +323,7 @@ Resources:
         Id: 'packets'
         Label: 'Packets'
         ReturnData: false
-      - Expression: 'packets/4000000*100' # hard limit is 4,000,000 packets per second
+      - Expression: 'packets/10000000*100' # hard limit is 10,000,000 packets per second
         Id: 'utilization'
         Label: 'Utilization'
         ReturnData: true
@@ -338,4 +338,4 @@ Outputs:
     Value: 'marbot-nat-gateway'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.0.0'
+    Value: '1.0.1'
