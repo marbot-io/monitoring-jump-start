@@ -297,8 +297,3 @@ Resources:
       InstanceId: !Ref InstanceId
       NetworkUtilizationThreshold: !Ref NetworkUtilizationThreshold
       ServiceToken: !Ref CustomResourceLambda
-
-Outputs:
-  StackVersion:
-    Description: 'Stack version.'
-    Value: '2.5.0'
