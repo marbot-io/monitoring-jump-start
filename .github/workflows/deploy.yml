@@ -25,6 +25,6 @@ jobs:
         AWS_DEFAULT_REGION: 'eu-west-1'
       run: |
         python -m pip install --upgrade pip
-        pip install awscli==1.18.179
-        # could be improved to ignore .github/*
-        aws s3 sync . s3://monitoring-jump-start --exclude '*' --include '*.yml' --include 'data/*'
+        pip install awscli==1.25.62
+        aws s3 sync . s3://monitoring-jump-start --exclude '*' --include 'marbot*.yml' --include 'data/*' --delete
+        for file in marbot*.yml; do version=$(yq e '.Outputs.StackVersion.Value' $file); aws s3 cp $file s3://monitoring-jump-start/$version/$file; done
