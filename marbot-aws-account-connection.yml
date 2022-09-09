@@ -142,4 +142,3 @@ Outputs:
   StackVersion:
     Description: 'Stack version.'
     Value: '1.0.0'
-
