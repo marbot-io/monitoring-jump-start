@@ -35,12 +35,18 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
+  AccountAlias:
+    Description: 'Enrich AWS account IDs with alias names.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   CloudWatchMetricGraph:
-    Description: 'Enrich CloudWatch Alarms with a metric graph.'
+    Description: 'Enrich CloudWatch Alarms with metric graphs.'
     Type: String
     Default: true
     AllowedValues: [true, false]
 Conditions:
+  AccountAliasEnabled: !Equals [!Ref AccountAlias, 'true']
   CloudWatchMetricGraphEnabled: !Equals [!Ref CloudWatchMetricGraph, 'true']
 Resources:
   ##########################################################################
@@ -125,6 +131,18 @@ Resources:
           Condition:
             StringEquals:
               'sts:ExternalId': !Select [2, !Split ['/', !Ref 'AWS::StackId']]
+  AccountAliasPolicy:
+    Condition: AccountAliasEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'iam:ListAccountAliases'
+          Resource: '*'
+      PolicyName: AccountAliasPolicy
+      Roles:
+      - !Ref Role
   CloudWatchMetricGraphPolicy:
     Condition: CloudWatchMetricGraphEnabled
     Type: 'AWS::IAM::Policy'
