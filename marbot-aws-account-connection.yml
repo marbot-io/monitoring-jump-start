@@ -43,48 +43,59 @@ Parameters:
 Conditions:
   CloudWatchMetricGraphEnabled: !Equals [!Ref CloudWatchMetricGraph, 'true']
 Resources:
-  Topic:
-    Type: 'AWS::SNS::Topic'
-    Properties: {}
-  TopicPolicy:
-    Type: 'AWS::SNS::TopicPolicy'
+  ##########################################################################
+  #                                                                        #
+  #                                  API                                   #
+  #                                                                        #
+  ##########################################################################
+  ApiConnection:
+    Type: 'AWS::Events::Connection'
     Properties:
-      PolicyDocument:
+      AuthorizationType: 'API_KEY'
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: 'X-API-Key'
+          ApiKeyValue: !Ref EndpointId
+      Description: 'marbot'
+  ApiDestination:
+    Type: 'AWS::Events::ApiDestination'
+    Properties:
+      ConnectionArn: !GetAtt 'ApiConnection.Arn'
+      Description: 'Forwards notifiations and alarms to marbot'
+      HttpMethod: 'POST'
+      InvocationEndpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      InvocationRateLimitPerSecond: 1
+  ApiRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
-        - Effect: Allow
+        - Effect: 'Allow'
           Principal:
-            Service: 'events.amazonaws.com' # Allow EventBridge
-          Action: 'sns:Publish'
-          Resource: !Ref Topic
-      Topics:
-      - !Ref Topic
-  TopicEndpointSubscription:
-    DependsOn: TopicPolicy
-    Type: 'AWS::SNS::Subscription'
-    Properties:
-      DeliveryPolicy:
-        healthyRetryPolicy:
-          minDelayTarget: 1
-          maxDelayTarget: 60
-          numRetries: 100
-          numNoDelayRetries: 0
-          backoffFunction: exponential
-        throttlePolicy:
-          maxReceivesPerSecond: 1
-      Endpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
-      Protocol: https
-      TopicArn: !Ref Topic
+            Service:
+            - 'events.amazonaws.com'
+          Action:
+          - sts:AssumeRole
+      Path: '/service-role/'
+      Policies:
+      - PolicyName: eventbridge
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: 'Allow'
+            Action: 'events:InvokeApiDestination'
+            Resource: !GetAtt 'ApiDestination.Arn'
   MonitoringJumpStartEvent:
-    DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Jump Start connection. (created by marbot)'
       ScheduleExpression: 'rate(30 days)'
       State: ENABLED
       Targets:
-      - Arn: !Ref Topic
+      - Arn: !GetAtt 'ApiDestination.Arn'
         Id: marbot
+        RoleArn: !GetAtt 'ApiRole.Arn'
         Input: !Sub |
           {
             "Type": "monitoring-jump-start-connection",
@@ -96,6 +107,11 @@ Resources:
             "StackId": "${AWS::StackId}",
             "StackName": "${AWS::StackName}"
           }
+  ##########################################################################
+  #                                                                        #
+  #                         AWS ACCOUNT CONNECTION                         #
+  #                                                                        #
+  ##########################################################################
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
