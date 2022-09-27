@@ -25,6 +25,7 @@ Metadata:
     - Label:
         default: 'Features'
       Parameters:
+      - AccountAlias
       - CloudWatchMetricGraph
 Parameters:
   EndpointId:
@@ -36,12 +37,12 @@ Parameters:
     Default: v1
     AllowedValues: [v1, dev]
   AccountAlias:
-    Description: 'Enrich AWS account IDs with alias names.'
+    Description: 'Enrich AWS account IDs with alias names?'
     Type: String
     Default: true
     AllowedValues: [true, false]
   CloudWatchMetricGraph:
-    Description: 'Enrich CloudWatch Alarms with metric graphs.'
+    Description: 'Enrich CloudWatch Alarms with metric graphs?'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -165,6 +166,7 @@ Resources:
       AwsRoleName: !Ref 'Role'
       AwsRoleExternalId: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
       MarbotEndpointId: !Ref EndpointId
+      MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
 Outputs:
   StackName:
