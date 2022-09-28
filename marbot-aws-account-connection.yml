@@ -27,6 +27,7 @@ Metadata:
       Parameters:
       - AccountAlias
       - CloudWatchMetricGraph
+      - CodePipelineApproval
 Parameters:
   EndpointId:
     Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
@@ -46,9 +47,15 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  CodePipelineApproval:
+    Description: 'Allow CodePipeline approval requests to be approved or rejected with a button?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   AccountAliasEnabled: !Equals [!Ref AccountAlias, 'true']
   CloudWatchMetricGraphEnabled: !Equals [!Ref CloudWatchMetricGraph, 'true']
+  CodePipelineApprovalEnabled: !Equals [!Ref CodePipelineApproval, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -156,6 +163,18 @@ Resources:
       PolicyName: CloudWatchMetricGraphPolicy
       Roles:
       - !Ref Role
+  CodePipelineApprovalPolicy:
+    Condition: CodePipelineApprovalEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'codepipeline:PutApprovalResult'
+          Resource: '*'
+      PolicyName: CodePipelineApprovalPolicy
+      Roles:
+      - !Ref Role
   Connection:
     Type: 'Custom::Connection'
     Version: '1.0'
@@ -168,6 +187,7 @@ Resources:
       MarbotEndpointId: !Ref EndpointId
       MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
+      MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
 Outputs:
   StackName:
     Description: 'Stack name.'
