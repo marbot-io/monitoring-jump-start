@@ -1,0 +1,200 @@
+---
+# Copyright widdix GmbH
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'marbot.io: AWS account connection (https://github.com/marbot-io/monitoring-jump-start)'
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+    - Label:
+        default: 'marbot endpoint'
+      Parameters:
+      - EndpointId
+      - Stage
+    - Label:
+        default: 'Features'
+      Parameters:
+      - AccountAlias
+      - CloudWatchMetricGraph
+      - CodePipelineApproval
+Parameters:
+  EndpointId:
+    Description: 'Your marbot endpoint ID (to get this value: select a channel where marbot belongs to and send a message like this: "@marbot show me my endpoint id").'
+    Type: String
+  Stage:
+    Description: 'marbot stage (never change this!).'
+    Type: String
+    Default: v1
+    AllowedValues: [v1, dev]
+  AccountAlias:
+    Description: 'Enrich AWS account IDs with alias names?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CloudWatchMetricGraph:
+    Description: 'Enrich CloudWatch Alarms with metric graphs?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+  CodePipelineApproval:
+    Description: 'Allow CodePipeline approval requests to be approved or rejected with a button?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
+Conditions:
+  AccountAliasEnabled: !Equals [!Ref AccountAlias, 'true']
+  CloudWatchMetricGraphEnabled: !Equals [!Ref CloudWatchMetricGraph, 'true']
+  CodePipelineApprovalEnabled: !Equals [!Ref CodePipelineApproval, 'true']
+Resources:
+  ##########################################################################
+  #                                                                        #
+  #                                  API                                   #
+  #                                                                        #
+  ##########################################################################
+  ApiConnection:
+    Type: 'AWS::Events::Connection'
+    Properties:
+      AuthorizationType: 'API_KEY'
+      AuthParameters:
+        ApiKeyAuthParameters:
+          ApiKeyName: 'X-API-Key'
+          ApiKeyValue: !Ref EndpointId
+      Description: 'marbot'
+  ApiDestination:
+    Type: 'AWS::Events::ApiDestination'
+    Properties:
+      ConnectionArn: !GetAtt 'ApiConnection.Arn'
+      Description: 'Forwards notifiations and alarms to marbot'
+      HttpMethod: 'POST'
+      InvocationEndpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
+      InvocationRateLimitPerSecond: 1
+  ApiRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: 'Allow'
+          Principal:
+            Service:
+            - 'events.amazonaws.com'
+          Action:
+          - sts:AssumeRole
+      Path: '/service-role/'
+      Policies:
+      - PolicyName: eventbridge
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: 'Allow'
+            Action: 'events:InvokeApiDestination'
+            Resource: !GetAtt 'ApiDestination.Arn'
+  MonitoringJumpStartEvent:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
+      ScheduleExpression: 'rate(30 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !GetAtt 'ApiDestination.Arn'
+        Id: marbot
+        RoleArn: !GetAtt 'ApiRole.Arn'
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackTemplate": "marbot-aws-account-connection",
+            "StackVersion": "1.0.0",
+            "Partition": "${AWS::Partition}",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
+          }
+  ##########################################################################
+  #                                                                        #
+  #                         AWS ACCOUNT CONNECTION                         #
+  #                                                                        #
+  ##########################################################################
+  Role:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: '853553028582'
+          Action: 'sts:AssumeRole'
+          Condition:
+            StringEquals:
+              'sts:ExternalId': !Select [2, !Split ['/', !Ref 'AWS::StackId']]
+  AccountAliasPolicy:
+    Condition: AccountAliasEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'iam:ListAccountAliases'
+          Resource: '*'
+      PolicyName: AccountAliasPolicy
+      Roles:
+      - !Ref Role
+  CloudWatchMetricGraphPolicy:
+    Condition: CloudWatchMetricGraphEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'cloudwatch:GetMetricWidgetImage'
+          Resource: '*'
+      PolicyName: CloudWatchMetricGraphPolicy
+      Roles:
+      - !Ref Role
+  CodePipelineApprovalPolicy:
+    Condition: CodePipelineApprovalEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action: 'codepipeline:PutApprovalResult'
+          Resource: '*'
+      PolicyName: CodePipelineApprovalPolicy
+      Roles:
+      - !Ref Role
+  Connection:
+    Type: 'Custom::Connection'
+    Version: '1.0'
+    Properties:
+      ServiceToken: !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:853553028582:marbot-${Stage}-aws-account-connection'
+      AwsPartition: !Ref 'AWS::Partition'
+      AwsAccountId: !Ref 'AWS::AccountId'
+      AwsRoleName: !Ref 'Role'
+      AwsRoleExternalId: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
+      MarbotEndpointId: !Ref EndpointId
+      MarbotFeatureAccountAlias: !Ref AccountAlias
+      MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
+      MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
+Outputs:
+  StackName:
+    Description: 'Stack name.'
+    Value: !Sub '${AWS::StackName}'
+  StackTemplate:
+    Description: 'Stack template.'
+    Value: 'marbot-aws-account-connection'
+  StackVersion:
+    Description: 'Stack version.'
+    Value: '1.0.0'

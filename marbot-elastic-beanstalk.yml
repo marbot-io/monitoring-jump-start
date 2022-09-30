@@ -103,7 +103,12 @@ Conditions:
   ApplicationNamesAll: !Equals [!Join ['', !Ref ApplicationNames], '*']
   EnvironmentNamesAll: !Equals [!Join ['', !Ref EnvironmentNames], '*']
 Resources:
-  Connection:
+  ##########################################################################
+  #                                                                        #
+  #                                  API                                   #
+  #                                                                        #
+  ##########################################################################
+  ApiConnection:
     Type: 'AWS::Events::Connection'
     Properties:
       AuthorizationType: 'API_KEY'
@@ -112,15 +117,15 @@ Resources:
           ApiKeyName: 'X-API-Key'
           ApiKeyValue: !Ref EndpointId
       Description: 'marbot'
-  Destination:
+  ApiDestination:
     Type: 'AWS::Events::ApiDestination'
     Properties:
-      ConnectionArn: !GetAtt 'Connection.Arn'
+      ConnectionArn: !GetAtt 'ApiConnection.Arn'
       Description: 'Forwards notifiations and alarms to marbot'
       HttpMethod: 'POST'
       InvocationEndpoint: !Sub 'https://api.marbot.io/${Stage}/endpoint/${EndpointId}'
-      InvocationRateLimitPerSecond: 1 # API rate limit = 0.2 req/sec baseline and 10 req/sec burst
-  EventRuleRole:
+      InvocationRateLimitPerSecond: 1
+  ApiRole:
     Type: 'AWS::IAM::Role'
     Properties:
       AssumeRolePolicyDocument:
@@ -139,10 +144,35 @@ Resources:
           Version: '2012-10-17'
           Statement:
           - Effect: 'Allow'
-            Action:
-            - 'events:InvokeApiDestination'
-            Resource: !GetAtt 'Destination.Arn'
-  MonitoringElasticBeanstalk:
+            Action: 'events:InvokeApiDestination'
+            Resource: !GetAtt 'ApiDestination.Arn'
+  MonitoringJumpStartEvent:
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Monitoring Jump Start connection. (created by marbot)'
+      ScheduleExpression: 'rate(30 days)'
+      State: ENABLED
+      Targets:
+      - Arn: !GetAtt 'ApiDestination.Arn'
+        Id: marbot
+        RoleArn: !GetAtt 'ApiRole.Arn'
+        Input: !Sub |
+          {
+            "Type": "monitoring-jump-start-connection",
+            "StackTemplate": "marbot-elastic-beanstalk",
+            "StackVersion": "1.5.0",
+            "Partition": "${AWS::Partition}",
+            "AccountId": "${AWS::AccountId}",
+            "Region": "${AWS::Region}",
+            "StackId": "${AWS::StackId}",
+            "StackName": "${AWS::StackName}"
+          }
+  ##########################################################################
+  #                                                                        #
+  #                                 EVENTS                                 #
+  #                                                                        #
+  ##########################################################################
+  ElasticBeanstalkEvent:
     Type: 'AWS::Events::Rule'
     Properties:
       Description: 'Monitoring Elastic Beanstalk. (created by marbot)'
@@ -163,31 +193,9 @@ Resources:
           ApplicationName: !If [ApplicationNamesAll, !Ref 'AWS::NoValue', !Ref ApplicationNames]
           EnvironmentName: !If [EnvironmentNamesAll, !Ref 'AWS::NoValue', !Ref EnvironmentNames]
       Targets:
-      - Arn: !GetAtt Destination.Arn
+      - Arn: !GetAtt 'ApiDestination.Arn'
         Id: marbot
-        RoleArn: !GetAtt 'EventRuleRole.Arn'
-  MonitoringJumpStartEvent:
-    Type: 'AWS::Events::Rule'
-    Properties:
-      Description: 'Monitoring Jump Start connection. (created by marbot)'
-      ScheduleExpression: 'rate(30 days)'
-      State: ENABLED
-      Targets:
-      - Arn: !GetAtt Destination.Arn
-        Id: marbot
-        RoleArn: !GetAtt 'EventRuleRole.Arn'
-        Input: !Sub |
-          {
-            "Type": "monitoring-jump-start-connection",
-            "StackTemplate": "marbot-elastic-beanstalk",
-            "StackVersion": "1.5.0",
-            "Partition": "${AWS::Partition}",
-            "AccountId": "${AWS::AccountId}",
-            "Region": "${AWS::Region}",
-            "StackId": "${AWS::StackId}",
-            "StackName": "${AWS::StackName}"
-          }
-
+        RoleArn: !GetAtt 'ApiRole.Arn'
 Outputs:
   StackName:
     Description: 'Stack name.'
