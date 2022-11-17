@@ -259,6 +259,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  ECSSpotNotifications:
+    Description: 'Receive a notification when an ECS Fargate Spot task gets interrupted or fails to launch.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   MacieAlert:
     Description: 'Receive an alert, if Macie fires an alert.'
     Type: String
@@ -410,6 +415,7 @@ Conditions:
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   ECSDeploymentFailedEnabled: !Equals [!Ref ECSDeploymentFailed, 'true']
+  ECSSpotNotificationsEnabled: !Equals [!Ref ECSSpotNotifications, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
   SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
   SecurityHubInsightEnabled: !Equals [!Ref SecurityHubInsight, 'true']
@@ -1407,6 +1413,42 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  ECSSpotFailureEvent:
+    Condition: ECSSpotNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'ECS Spot failure. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ecs'
+        'detail-type':
+        - 'ECS Service Action'
+        detail:
+          eventName:
+          - SERVICE_TASK_PLACEMENT_FAILURE
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  ECSSpotInterruptionEvent:
+    Condition: ECSSpotNotificationsEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'ECS Spot interruption notice. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ecs'
+        'detail-type':
+        - 'ECS Task State Change'
+        detail:
+          stopCode:
+          - TerminationNotice
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   MacieAlertEvent:
     Condition: MacieAlertEnabled
     DependsOn: TopicEndpointSubscription
@@ -2041,7 +2083,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.15.0'
+    Value: '2.16.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
