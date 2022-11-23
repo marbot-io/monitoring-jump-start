@@ -53,6 +53,7 @@ Metadata:
       - EC2SpotInstanceInterruption
       - ECSServiceFailed
       - ECSDeploymentFailed
+      - ECSSpotInterruption
       - MacieAlert
       - SecurityHubFinding
       - SecurityHubInsight
@@ -259,7 +260,7 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
-  ECSSpotNotifications:
+  ECSSpotInterruption:
     Description: 'Receive a notification when an ECS Fargate Spot task gets interrupted or fails to launch.'
     Type: String
     Default: true
@@ -415,7 +416,7 @@ Conditions:
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   ECSDeploymentFailedEnabled: !Equals [!Ref ECSDeploymentFailed, 'true']
-  ECSSpotNotificationsEnabled: !Equals [!Ref ECSSpotNotifications, 'true']
+  ECSSpotInterruptionEnabled: !Equals [!Ref ECSSpotInterruption, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
   SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
   SecurityHubInsightEnabled: !Equals [!Ref SecurityHubInsight, 'true']
@@ -1413,12 +1414,12 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
-  ECSSpotFailureEvent:
-    Condition: ECSSpotNotificationsEnabled
+  ECSSpotPlacementFailureEvent:
+    Condition: ECSSpotInterruptionEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'ECS Spot failure. (created by marbot)'
+      Description: 'ECS service scheduler was unable to acquire any Fargate Spot capacity. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ecs'
@@ -1427,16 +1428,18 @@ Resources:
         detail:
           eventName:
           - SERVICE_TASK_PLACEMENT_FAILURE
+          reason:
+          - 'RESOURCE:FARGATE'
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
         Id: marbot
   ECSSpotInterruptionEvent:
-    Condition: ECSSpotNotificationsEnabled
+    Condition: ECSSpotInterruptionEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'ECS Spot interruption notice. (created by marbot)'
+      Description: 'ECS task is stopping due to Fargate Spot interruption. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ecs'
