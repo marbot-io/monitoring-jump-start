@@ -25,6 +25,7 @@ Metadata:
     - Label:
         default: 'Features'
       Parameters:
+      - MonitoringAssistant
       - AccountAlias
       - CloudWatchMetricGraph
       - CodePipelineApproval
@@ -37,6 +38,11 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
+  MonitoringAssistant:
+    Description: 'Configure AWS monitoring rules automatically?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   AccountAlias:
     Description: 'Enrich AWS account IDs with alias names?'
     Type: String
@@ -53,6 +59,7 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
 Conditions:
+  MonitoringAssistantEnabled: !Equals [!Ref MonitoringAssistant, 'true']
   AccountAliasEnabled: !Equals [!Ref AccountAlias, 'true']
   CloudWatchMetricGraphEnabled: !Equals [!Ref CloudWatchMetricGraph, 'true']
   CodePipelineApprovalEnabled: !Equals [!Ref CodePipelineApproval, 'true']
@@ -139,6 +146,86 @@ Resources:
           Condition:
             StringEquals:
               'sts:ExternalId': !Select [2, !Split ['/', !Ref 'AWS::StackId']]
+  MonitoringAssistantPolicy:
+    Condition: MonitoringAssistantEnabled
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'ec2:DescribeInstances'
+          - 'autoscaling:DescribeAutoScalingGroups'
+          - 'sqs:ListQueues'
+          - 'elasticloadbalancing:DescribeLoadBalancers'
+          - 'elasticloadbalancing:DescribeTargetGroups'
+          - 'rds:DescribeDBClusters'
+          Resource: '*'
+        - Effect: Allow # basic monitoring
+          Action:
+          - 'iam:CreateRole'
+          - 'iam:DeleteRole'
+          - 'iam:GetRole'
+          - 'iam:PutRolePolicy'
+          - 'iam:DeleteRolePolicy'
+          - 'iam:GetRolePolicy'
+          - 'iam:ListRolePolicies'
+          - 'iam:ListAttachedRolePolicies'
+          - 'iam:ListInstanceProfilesForRole'
+          - 'sns:CreateTopic'
+          - 'sns:DeleteTopic'
+          - 'sns:SetTopicAttributes'
+          - 'sns:GetTopicAttributes'
+          - 'sns:Subscribe'
+          - 'sns:Unsubscribe'
+          - 'sns:SetSubscriptionAttributes'
+          - 'sns:GetSubscriptionAttributes'
+          - 'sns:ListTagsForResource'
+          - 'lambda:CreateFunction'
+          - 'lambda:DeleteFunction'
+          - 'lambda:GetFunction'
+          - 'lambda:ListVersionsByFunction'
+          - 'lambda:GetFunctionCodeSigningConfig'
+          - 'lambda:AddPermission'
+          - 'lambda:RemovePermission'
+          - 'lambda:GetPolicy'
+          - 'logs:CreateLogGroup'
+          - 'logs:DeleteLogGroup'
+          - 'logs:DescribeLogGroups'
+          - 'logs:PutRetentionPolicy'
+          - 'logs:DeleteRetentionPolicy'
+          - 'logs:ListTagsLogGroup'
+          - 'iam:PassRole'
+          - 'cloudwatch:PutMetricAlarm'
+          - 'cloudwatch:DeleteAlarms'
+          - 'cloudwatch:DescribeAlarms'
+          - 'cloudwatch:ListTagsForResource'
+          - 'events:PutRule'
+          - 'events:DeleteRule'
+          - 'events:DescribeRule'
+          - 'events:PutTargets'
+          - 'events:RemoveTargets'
+          - 'events:ListTargetsByRule'
+          - 'events:ListTagsForResource'
+          - 'rds:CreateEventSubscription'
+          - 'rds:DeleteEventSubscription'
+          - 'rds:DescribeEventSubscriptions'
+          - 'rds:ListTagsForResource'
+          Resource: '*'
+        - Effect: Allow # ec2 monitoring
+          Action:
+          - 'sts:GetCallerIdentity'
+          - 'ec2:DescribeInstances'
+          - 'ec2:DescribeInstanceAttribute'
+          - 'ec2:DescribeInstanceTypes'
+          - 'ec2:DescribeAccountAttributes'
+          - 'ec2:DescribeVpcs'
+          - 'ec2:DescribeVolumes'
+          - 'ec2:DescribeInstanceCreditSpecifications'
+          Resource: '*'
+      PolicyName: MonitoringAssistantPolicy
+      Roles:
+      - !Ref Role
   AccountAliasPolicy:
     Condition: AccountAliasEnabled
     Type: 'AWS::IAM::Policy'
@@ -185,6 +272,7 @@ Resources:
       AwsRoleName: !Ref 'Role'
       AwsRoleExternalId: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
       MarbotEndpointId: !Ref EndpointId
+      MarbotFeatureMonitoringAssistant: !Ref MonitoringAssistant
       MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
       MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
@@ -197,4 +285,4 @@ Outputs:
     Value: 'marbot-aws-account-connection'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.0.0'
+    Value: '1.1.0'
