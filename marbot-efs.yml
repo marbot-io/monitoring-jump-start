@@ -45,7 +45,7 @@ Parameters:
   BurstCreditBalanceThreshold:
     Description: 'The minimum number of burst credits that a file system should have (set to -1 to disable).'
     Type: Number
-    Default: 192000000000 # 192 GB in Bytes (last hour where you can burst at 100 MB/sec)
+    Default: 192000000000 # 192 GB in Bytes (last ~30 minutes where you can burst at 100 MB/sec)
     MinValue: -1
   ThroughputThreshold:
     Description: 'The maximum percentage of throughput utilization (set to -1 to disable).'
