@@ -53,6 +53,7 @@ Metadata:
       - EC2SpotInstanceInterruption
       - ECSServiceFailed
       - ECSDeploymentFailed
+      - ECSSpotInterruption
       - MacieAlert
       - SecurityHubFinding
       - SecurityHubInsight
@@ -259,6 +260,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  ECSSpotInterruption:
+    Description: 'Receive an alert, if an ECS Fargate Spot task gets interrupted or fails to launch.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   MacieAlert:
     Description: 'Receive an alert, if Macie fires an alert.'
     Type: String
@@ -410,6 +416,7 @@ Conditions:
   EC2SpotInstanceInterruptionEnabled: !Equals [!Ref EC2SpotInstanceInterruption, 'true']
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   ECSDeploymentFailedEnabled: !Equals [!Ref ECSDeploymentFailed, 'true']
+  ECSSpotInterruptionEnabled: !Equals [!Ref ECSSpotInterruption, 'true']
   MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
   SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
   SecurityHubInsightEnabled: !Equals [!Ref SecurityHubInsight, 'true']
@@ -511,7 +518,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "2.15.0",
+            "StackVersion": "2.16.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1407,6 +1414,44 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  ECSSpotPlacementFailureEvent:
+    Condition: ECSSpotInterruptionEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'ECS service scheduler was unable to acquire any Fargate Spot capacity. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ecs'
+        'detail-type':
+        - 'ECS Service Action'
+        detail:
+          eventName:
+          - SERVICE_TASK_PLACEMENT_FAILURE
+          reason:
+          - 'RESOURCE:FARGATE'
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
+  ECSSpotInterruptionEvent:
+    Condition: ECSSpotInterruptionEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'ECS task is stopping due to Fargate Spot interruption. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.ecs'
+        'detail-type':
+        - 'ECS Task State Change'
+        detail:
+          stopCode:
+          - TerminationNotice
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   MacieAlertEvent:
     Condition: MacieAlertEnabled
     DependsOn: TopicEndpointSubscription
@@ -2041,7 +2086,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.15.0'
+    Value: '2.16.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
