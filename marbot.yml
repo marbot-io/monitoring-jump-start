@@ -261,7 +261,7 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   ECSSpotInterruption:
-    Description: 'Receive a notification when an ECS Fargate Spot task gets interrupted or fails to launch.'
+    Description: 'Receive an alert, if an ECS Fargate Spot task gets interrupted or fails to launch.'
     Type: String
     Default: true
     AllowedValues: [true, false]
