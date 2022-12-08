@@ -185,6 +185,7 @@ Resources:
           - 'iam:ListRolePolicies'
           - 'iam:PassRole'
           - 'iam:PutRolePolicy'
+          - 'iam:UpdateRoleDescription'
           - 'lambda:AddPermission'
           - 'lambda:CreateFunction'
           - 'lambda:UpdateFunctionConfiguration'
@@ -206,6 +207,7 @@ Resources:
           - 'rds:DescribeDBClusters'
           - 'rds:DescribeEventSubscriptions'
           - 'rds:ListTagsForResource'
+          - 'rds:ModifyEventSubscription'
           - 'sns:CreateTopic'
           - 'sns:DeleteTopic'
           - 'sns:GetSubscriptionAttributes'
@@ -271,6 +273,10 @@ Resources:
       MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
       MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
+      CloudFormationStackVersion: '1.1.0'
+      CloudFormationStackRegion: !Ref 'AWS::Region'
+      CloudFormationStackId: !Ref 'AWS::StackId'
+      CloudFormationStackName: !Ref 'AWS::StackName'
 Outputs:
   StackName:
     Description: 'Stack name.'
