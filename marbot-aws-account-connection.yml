@@ -146,119 +146,129 @@ Resources:
           Condition:
             StringEquals:
               'sts:ExternalId': !Select [2, !Split ['/', !Ref 'AWS::StackId']]
-  MonitoringAssistantPolicy:
-    Condition: MonitoringAssistantEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action:
-          - 'autoscaling:DescribeAutoScalingGroups'
-          - 'cloudwatch:DeleteAlarms'
-          - 'cloudwatch:DescribeAlarms'
-          - 'cloudwatch:ListTagsForResource'
-          - 'cloudwatch:PutMetricAlarm'
-          - 'ec2:DescribeAccountAttributes'
-          - 'ec2:DescribeInstanceAttribute'
-          - 'ec2:DescribeInstanceCreditSpecifications'
-          - 'ec2:DescribeInstances'
-          - 'ec2:DescribeInstanceTypes'
-          - 'ec2:DescribeVolumes'
-          - 'ec2:DescribeVpcs'
-          - 'elasticloadbalancing:DescribeLoadBalancers'
-          - 'elasticloadbalancing:DescribeTargetGroups'
-          - 'events:DeleteRule'
-          - 'events:DescribeRule'
-          - 'events:ListTagsForResource'
-          - 'events:ListTargetsByRule'
-          - 'events:PutRule'
-          - 'events:PutTargets'
-          - 'events:RemoveTargets'
-          - 'iam:CreateRole'
-          - 'iam:DeleteRole'
-          - 'iam:DeleteRolePolicy'
-          - 'iam:GetRole'
-          - 'iam:GetRolePolicy'
-          - 'iam:ListAttachedRolePolicies'
-          - 'iam:ListInstanceProfilesForRole'
-          - 'iam:ListRolePolicies'
-          - 'iam:PassRole'
-          - 'iam:PutRolePolicy'
-          - 'iam:UpdateRoleDescription'
-          - 'lambda:AddPermission'
-          - 'lambda:CreateFunction'
-          - 'lambda:UpdateFunctionConfiguration'
-          - 'lambda:UpdateFunctionCode'
-          - 'lambda:DeleteFunction'
-          - 'lambda:GetFunction'
-          - 'lambda:GetFunctionCodeSigningConfig'
-          - 'lambda:GetPolicy'
-          - 'lambda:ListVersionsByFunction'
-          - 'lambda:RemovePermission'
-          - 'logs:CreateLogGroup'
-          - 'logs:DeleteLogGroup'
-          - 'logs:DeleteRetentionPolicy'
-          - 'logs:DescribeLogGroups'
-          - 'logs:ListTagsLogGroup'
-          - 'logs:PutRetentionPolicy'
-          - 'rds:CreateEventSubscription'
-          - 'rds:DeleteEventSubscription'
-          - 'rds:DescribeDBClusters'
-          - 'rds:DescribeEventSubscriptions'
-          - 'rds:ListTagsForResource'
-          - 'rds:ModifyEventSubscription'
-          - 'sns:CreateTopic'
-          - 'sns:DeleteTopic'
-          - 'sns:GetSubscriptionAttributes'
-          - 'sns:GetTopicAttributes'
-          - 'sns:ListTagsForResource'
-          - 'sns:SetSubscriptionAttributes'
-          - 'sns:SetTopicAttributes'
-          - 'sns:Subscribe'
-          - 'sns:Unsubscribe'
-          - 'sqs:ListQueues'
-          - 'sts:GetCallerIdentity'
-          Resource: '*'
-      PolicyName: MonitoringAssistantPolicy
-      Roles:
-      - !Ref Role
-  AccountAliasPolicy:
-    Condition: AccountAliasEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action: 'iam:ListAccountAliases'
-          Resource: '*'
-      PolicyName: AccountAliasPolicy
-      Roles:
-      - !Ref Role
-  CloudWatchMetricGraphPolicy:
-    Condition: CloudWatchMetricGraphEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action: 'cloudwatch:GetMetricWidgetImage'
-          Resource: '*'
-      PolicyName: CloudWatchMetricGraphPolicy
-      Roles:
-      - !Ref Role
-  CodePipelineApprovalPolicy:
-    Condition: CodePipelineApprovalEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action: 'codepipeline:PutApprovalResult'
-          Resource: '*'
-      PolicyName: CodePipelineApprovalPolicy
-      Roles:
-      - !Ref Role
+      Policies:
+      - !If
+        - MonitoringAssistantEnabled
+        - PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'elasticloadbalancing:DescribeLoadBalancers'
+              - 'elasticloadbalancing:DescribeTargetGroups'
+              - 'autoscaling:DescribeAutoScalingGroups'
+              - 'ec2:DescribeInstances'
+              - 'rds:DescribeDBClusters'
+              - 'sqs:ListQueues'
+              - 'ec2:DescribeAccountAttributes'
+              - 'ec2:DescribeInstanceAttribute'
+              - 'ec2:DescribeInstanceCreditSpecifications'
+              - 'ec2:DescribeInstanceTypes'
+              - 'ec2:DescribeVolumes'
+              - 'ec2:DescribeVpcs'
+              - 'sts:GetCallerIdentity'
+              - 'sns:GetSubscriptionAttributes' # no resource-level restrictions supported
+              - 'sns:SetSubscriptionAttributes' # no resource-level restrictions supported
+              - 'sns:Unsubscribe' # no resource-level restrictions supported
+              Resource: '*'
+            - Effect: Allow
+              Action:
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:ListTagsForResource'
+              - 'cloudwatch:PutMetricAlarm'
+              Resource: !Sub 'arn:${AWS::Partition}:cloudwatch:*:${AWS::AccountId}:alarm:marbot*'
+            - Effect: Allow
+              Action:
+              - 'events:DeleteRule'
+              - 'events:DescribeRule'
+              - 'events:ListTagsForResource'
+              - 'events:ListTargetsByRule'
+              - 'events:PutRule'
+              - 'events:PutTargets'
+              - 'events:RemoveTargets'
+              Resource: !Sub 'arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/marbot*'
+            - Effect: Allow
+              Action:
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:GetTopicAttributes'
+              - 'sns:ListTagsForResource'
+              - 'sns:SetTopicAttributes'
+              - 'sns:Subscribe'
+              Resource: !Sub 'arn:${AWS::Partition}:sns:*:${AWS::AccountId}:marbot*'
+            - Effect: Allow
+              Action:
+              - 'rds:CreateEventSubscription'
+              - 'rds:DeleteEventSubscription'
+              - 'rds:DescribeEventSubscriptions'
+              - 'rds:ListTagsForResource'
+              - 'rds:ModifyEventSubscription'
+              Resource: !Sub 'arn:${AWS::Partition}:rds:*:${AWS::AccountId}:es:marbot*'
+            - Effect: Allow
+              Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:DeleteLogGroup'
+              - 'logs:DeleteRetentionPolicy'
+              - 'logs:DescribeLogGroups'
+              - 'logs:ListTagsLogGroup'
+              - 'logs:PutRetentionPolicy'
+              Resource: !Sub 'arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/marbot*'
+            - Effect: Allow
+              Action:
+              - 'lambda:AddPermission'
+              - 'lambda:CreateFunction'
+              - 'lambda:UpdateFunctionConfiguration'
+              - 'lambda:UpdateFunctionCode'
+              - 'lambda:DeleteFunction'
+              - 'lambda:GetFunction'
+              - 'lambda:GetFunctionCodeSigningConfig'
+              - 'lambda:GetPolicy'
+              - 'lambda:ListVersionsByFunction'
+              - 'lambda:RemovePermission'
+              Resource: !Sub 'arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:marbot*'
+            - Effect: Allow
+              Action:              
+              - 'iam:CreateRole'
+              - 'iam:DeleteRole'
+              - 'iam:DeleteRolePolicy'
+              - 'iam:GetRole'
+              - 'iam:GetRolePolicy'
+              - 'iam:ListAttachedRolePolicies'
+              - 'iam:ListInstanceProfilesForRole'
+              - 'iam:ListRolePolicies'
+              - 'iam:PassRole'
+              - 'iam:PutRolePolicy'
+              - 'iam:UpdateRoleDescription'
+              Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/marbot*'
+          PolicyName: MonitoringAssistantPolicy
+        - !Ref 'AWS::NoValue'
+      - !If
+        - AccountAliasEnabled
+        - PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: 'iam:ListAccountAliases'
+              Resource: '*'
+          PolicyName: AccountAliasPolicy
+        - !Ref 'AWS::NoValue'
+      - !If
+        - CloudWatchMetricGraphEnabled
+        - PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: 'cloudwatch:GetMetricWidgetImage'
+              Resource: '*'
+          PolicyName: CloudWatchMetricGraphPolicy
+        - !Ref 'AWS::NoValue'
+      - !If
+        - CodePipelineApprovalEnabled
+        - PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action: 'codepipeline:PutApprovalResult'
+              Resource: '*'
+          PolicyName: CodePipelineApprovalPolicy
+        - !Ref 'AWS::NoValue'
   Connection:
     Type: 'Custom::Connection'
     Version: '1.0'
@@ -266,7 +276,7 @@ Resources:
       ServiceToken: !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:853553028582:marbot-${Stage}-aws-account-connection'
       AwsPartition: !Ref 'AWS::Partition'
       AwsAccountId: !Ref 'AWS::AccountId'
-      AwsRoleName: !Ref 'Role'
+      AwsRoleName: !Ref Role
       AwsRoleExternalId: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
       MarbotEndpointId: !Ref EndpointId
       MarbotFeatureMonitoringAssistant: !Ref MonitoringAssistant
