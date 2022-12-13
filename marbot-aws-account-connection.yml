@@ -150,6 +150,7 @@ Resources:
       - !If
         - MonitoringAssistantEnabled
         - PolicyDocument:
+            Version: '2012-10-17'
             Statement:
             - Effect: Allow
               Action:
@@ -166,6 +167,7 @@ Resources:
               - 'ec2:DescribeVolumes'
               - 'ec2:DescribeVpcs'
               - 'sts:GetCallerIdentity'
+              - 'logs:DescribeLogGroups'
               - 'sns:GetSubscriptionAttributes' # no resource-level restrictions supported
               - 'sns:SetSubscriptionAttributes' # no resource-level restrictions supported
               - 'sns:Unsubscribe' # no resource-level restrictions supported
@@ -209,7 +211,6 @@ Resources:
               - 'logs:CreateLogGroup'
               - 'logs:DeleteLogGroup'
               - 'logs:DeleteRetentionPolicy'
-              - 'logs:DescribeLogGroups'
               - 'logs:ListTagsLogGroup'
               - 'logs:PutRetentionPolicy'
               Resource: !Sub 'arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/marbot*'
@@ -245,6 +246,7 @@ Resources:
       - !If
         - AccountAliasEnabled
         - PolicyDocument:
+            Version: '2012-10-17'
             Statement:
             - Effect: Allow
               Action: 'iam:ListAccountAliases'
@@ -254,6 +256,7 @@ Resources:
       - !If
         - CloudWatchMetricGraphEnabled
         - PolicyDocument:
+            Version: '2012-10-17'
             Statement:
             - Effect: Allow
               Action: 'cloudwatch:GetMetricWidgetImage'
@@ -263,6 +266,7 @@ Resources:
       - !If
         - CodePipelineApprovalEnabled
         - PolicyDocument:
+            Version: '2012-10-17'
             Statement:
             - Effect: Allow
               Action: 'codepipeline:PutApprovalResult'
