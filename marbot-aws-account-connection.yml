@@ -227,7 +227,7 @@ Resources:
               - 'lambda:RemovePermission'
               Resource: !Sub 'arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:marbot*'
             - Effect: Allow
-              Action:              
+              Action:
               - 'iam:CreateRole'
               - 'iam:DeleteRole'
               - 'iam:DeleteRolePolicy'
