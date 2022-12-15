@@ -25,6 +25,7 @@ Metadata:
     - Label:
         default: 'Features'
       Parameters:
+      - MonitoringAssistant
       - AccountAlias
       - CloudWatchMetricGraph
       - CodePipelineApproval
@@ -37,6 +38,11 @@ Parameters:
     Type: String
     Default: v1
     AllowedValues: [v1, dev]
+  MonitoringAssistant:
+    Description: 'Configure AWS monitoring rules automatically?'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
   AccountAlias:
     Description: 'Enrich AWS account IDs with alias names?'
     Type: String
@@ -53,6 +59,7 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
 Conditions:
+  MonitoringAssistantEnabled: !Equals [!Ref MonitoringAssistant, 'true']
   AccountAliasEnabled: !Equals [!Ref AccountAlias, 'true']
   CloudWatchMetricGraphEnabled: !Equals [!Ref CloudWatchMetricGraph, 'true']
   CodePipelineApprovalEnabled: !Equals [!Ref CodePipelineApproval, 'true']
@@ -114,7 +121,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-aws-account-connection",
-            "StackVersion": "1.0.0",
+            "StackVersion": "1.1.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -126,6 +133,26 @@ Resources:
   #                         AWS ACCOUNT CONNECTION                         #
   #                                                                        #
   ##########################################################################
+  PermissionsBoundaryPolicy:
+    Condition: MonitoringAssistantEnabled
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - 'cloudwatch:describeAlarms'
+          - 'securityhub:BatchUpdateFindings'
+          Resource: '*'
+        - Effect: Allow
+          Action: 'sns:Publish'
+          Resource: !Sub 'arn:${AWS::Partition}:sns:*:${AWS::AccountId}:marbot*'
+        - Effect: Allow
+          Action:
+          - 'logs:CreateLogStream'
+          - 'logs:PutLogEvents'
+          Resource: !Sub 'arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/marbot*'
   Role:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -139,42 +166,144 @@ Resources:
           Condition:
             StringEquals:
               'sts:ExternalId': !Select [2, !Split ['/', !Ref 'AWS::StackId']]
-  AccountAliasPolicy:
-    Condition: AccountAliasEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action: 'iam:ListAccountAliases'
-          Resource: '*'
-      PolicyName: AccountAliasPolicy
-      Roles:
-      - !Ref Role
-  CloudWatchMetricGraphPolicy:
-    Condition: CloudWatchMetricGraphEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action: 'cloudwatch:GetMetricWidgetImage'
-          Resource: '*'
-      PolicyName: CloudWatchMetricGraphPolicy
-      Roles:
-      - !Ref Role
-  CodePipelineApprovalPolicy:
-    Condition: CodePipelineApprovalEnabled
-    Type: 'AWS::IAM::Policy'
-    Properties:
-      PolicyDocument:
-        Statement:
-        - Effect: Allow
-          Action: 'codepipeline:PutApprovalResult'
-          Resource: '*'
-      PolicyName: CodePipelineApprovalPolicy
-      Roles:
-      - !Ref Role
+      Policies:
+      - !If
+        - MonitoringAssistantEnabled
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - 'elasticloadbalancing:DescribeLoadBalancers'
+              - 'elasticloadbalancing:DescribeTargetGroups'
+              - 'autoscaling:DescribeAutoScalingGroups'
+              - 'ec2:DescribeInstances'
+              - 'rds:DescribeDBClusters'
+              - 'sqs:ListQueues'
+              - 'ec2:DescribeAccountAttributes'
+              - 'ec2:DescribeInstanceAttribute'
+              - 'ec2:DescribeInstanceCreditSpecifications'
+              - 'ec2:DescribeInstanceTypes'
+              - 'ec2:DescribeVolumes'
+              - 'ec2:DescribeVpcs'
+              - 'sts:GetCallerIdentity'
+              - 'logs:DescribeLogGroups'
+              - 'sns:GetSubscriptionAttributes' # no resource-level restrictions supported
+              - 'sns:SetSubscriptionAttributes' # no resource-level restrictions supported
+              - 'sns:Unsubscribe' # no resource-level restrictions supported
+              Resource: '*'
+            - Effect: Allow
+              Action:
+              - 'cloudwatch:DeleteAlarms'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:ListTagsForResource'
+              - 'cloudwatch:PutMetricAlarm'
+              Resource: !Sub 'arn:${AWS::Partition}:cloudwatch:*:${AWS::AccountId}:alarm:marbot*'
+            - Effect: Allow
+              Action:
+              - 'events:DeleteRule'
+              - 'events:DescribeRule'
+              - 'events:ListTagsForResource'
+              - 'events:ListTargetsByRule'
+              - 'events:PutRule'
+              - 'events:PutTargets'
+              - 'events:RemoveTargets'
+              Resource: !Sub 'arn:${AWS::Partition}:events:*:${AWS::AccountId}:rule/marbot*'
+            - Effect: Allow
+              Action:
+              - 'sns:CreateTopic'
+              - 'sns:DeleteTopic'
+              - 'sns:GetTopicAttributes'
+              - 'sns:ListTagsForResource'
+              - 'sns:SetTopicAttributes'
+              - 'sns:Subscribe'
+              Resource: !Sub 'arn:${AWS::Partition}:sns:*:${AWS::AccountId}:marbot*'
+            - Effect: Allow
+              Action:
+              - 'rds:CreateEventSubscription'
+              - 'rds:DeleteEventSubscription'
+              - 'rds:DescribeEventSubscriptions'
+              - 'rds:ListTagsForResource'
+              - 'rds:ModifyEventSubscription'
+              Resource: !Sub 'arn:${AWS::Partition}:rds:*:${AWS::AccountId}:es:marbot*'
+            - Effect: Allow
+              Action:
+              - 'logs:CreateLogGroup'
+              - 'logs:DeleteLogGroup'
+              - 'logs:DeleteRetentionPolicy'
+              - 'logs:ListTagsLogGroup'
+              - 'logs:PutRetentionPolicy'
+              Resource: !Sub 'arn:${AWS::Partition}:logs:*:${AWS::AccountId}:log-group:/aws/lambda/marbot*'
+            - Effect: Allow
+              Action:
+              - 'lambda:AddPermission'
+              - 'lambda:CreateFunction'
+              - 'lambda:UpdateFunctionConfiguration'
+              - 'lambda:UpdateFunctionCode'
+              - 'lambda:DeleteFunction'
+              - 'lambda:GetFunction'
+              - 'lambda:GetFunctionCodeSigningConfig'
+              - 'lambda:GetPolicy'
+              - 'lambda:ListVersionsByFunction'
+              - 'lambda:RemovePermission'
+              Resource: !Sub 'arn:${AWS::Partition}:lambda:*:${AWS::AccountId}:function:marbot*'
+            - Effect: Allow
+              Action:
+              - 'iam:CreateRole'
+              - 'iam:DeleteRolePolicy'
+              - 'iam:PutRolePolicy'
+              Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/marbot*'
+              Condition:
+                StringEquals:
+                  'iam:PermissionsBoundary': !Ref PermissionsBoundaryPolicy
+            - Effect: Allow
+              Action: 'iam:PassRole'
+              Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/marbot*'
+              Condition:
+                StringEquals:
+                  'iam:PassedToService': 'lambda.amazonaws.com'
+            - Effect: Allow
+              Action:
+              - 'iam:DeleteRole'
+              - 'iam:GetRole'
+              - 'iam:GetRolePolicy'
+              - 'iam:ListAttachedRolePolicies'
+              - 'iam:ListInstanceProfilesForRole'
+              - 'iam:ListRolePolicies'
+              - 'iam:UpdateRoleDescription'
+              Resource: !Sub 'arn:${AWS::Partition}:iam::${AWS::AccountId}:role/marbot*'
+          PolicyName: MonitoringAssistantPolicy
+        - !Ref 'AWS::NoValue'
+      - !If
+        - AccountAliasEnabled
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action: 'iam:ListAccountAliases'
+              Resource: '*'
+          PolicyName: AccountAliasPolicy
+        - !Ref 'AWS::NoValue'
+      - !If
+        - CloudWatchMetricGraphEnabled
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action: 'cloudwatch:GetMetricWidgetImage'
+              Resource: '*'
+          PolicyName: CloudWatchMetricGraphPolicy
+        - !Ref 'AWS::NoValue'
+      - !If
+        - CodePipelineApprovalEnabled
+        - PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action: 'codepipeline:PutApprovalResult'
+              Resource: '*'
+          PolicyName: CodePipelineApprovalPolicy
+        - !Ref 'AWS::NoValue'
   Connection:
     Type: 'Custom::Connection'
     Version: '1.0'
@@ -182,12 +311,18 @@ Resources:
       ServiceToken: !Sub 'arn:${AWS::Partition}:sns:${AWS::Region}:853553028582:marbot-${Stage}-aws-account-connection'
       AwsPartition: !Ref 'AWS::Partition'
       AwsAccountId: !Ref 'AWS::AccountId'
-      AwsRoleName: !Ref 'Role'
+      AwsRoleName: !Ref Role
       AwsRoleExternalId: !Select [2, !Split ['/', !Ref 'AWS::StackId']]
+      AwsPermissionsBoundaryPolicyArn: !If [MonitoringAssistantEnabled, !Ref PermissionsBoundaryPolicy, '']
       MarbotEndpointId: !Ref EndpointId
+      MarbotFeatureMonitoringAssistant: !Ref MonitoringAssistant
       MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
       MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
+      CloudFormationStackVersion: '1.1.0'
+      CloudFormationStackRegion: !Ref 'AWS::Region'
+      CloudFormationStackId: !Ref 'AWS::StackId'
+      CloudFormationStackName: !Ref 'AWS::StackName'
 Outputs:
   StackName:
     Description: 'Stack name.'
@@ -197,4 +332,4 @@ Outputs:
     Value: 'marbot-aws-account-connection'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.0.0'
+    Value: '1.1.0'
