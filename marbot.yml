@@ -54,7 +54,7 @@ Metadata:
       - ECSServiceFailed
       - ECSDeploymentFailed
       - ECSSpotInterruption
-      - MacieAlert
+      - MacieFinding
       - SecurityHubFinding
       - SecurityHubInsight
       - OpsWorksDeploymentFailed
@@ -265,8 +265,8 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
-  MacieAlert:
-    Description: 'Receive an alert, if Macie fires an alert.'
+  MacieFinding:
+    Description: 'Receive an alert, if Macie generates a new finding.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -417,7 +417,7 @@ Conditions:
   ECSServiceFailedEnabled: !Equals [!Ref ECSServiceFailed, 'true']
   ECSDeploymentFailedEnabled: !Equals [!Ref ECSDeploymentFailed, 'true']
   ECSSpotInterruptionEnabled: !Equals [!Ref ECSSpotInterruption, 'true']
-  MacieAlertEnabled: !Equals [!Ref MacieAlert, 'true']
+  MacieFindingEnabled: !Equals [!Ref MacieFinding, 'true']
   SecurityHubFindingEnabled: !Equals [!Ref SecurityHubFinding, 'true']
   SecurityHubInsightEnabled: !Equals [!Ref SecurityHubInsight, 'true']
   OpsWorksDeploymentFailedEnabled: !Equals [!Ref OpsWorksDeploymentFailed, 'true']
@@ -1452,20 +1452,20 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
-  MacieAlertEvent:
-    Condition: MacieAlertEnabled
+  MacieFindingEvent:
+    Condition: MacieFindingEnabled
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts (risk >= high) from AWS Macie. (created by marbot)'
+      Description: 'Findings (severity >= high) from AWS Macie. (created by marbot)'
       EventPattern:
         source:
         - 'aws.macie'
         'detail-type':
-        - 'Macie Alert'
+        - 'Macie Finding'
         detail:
-          trigger:
-            risk: [{numeric: ['>=', 8]}]
+          severity:
+            score: [{numeric: ['>=', 3]}]
       State: ENABLED
       Targets:
       - Arn: !Ref Topic
@@ -2086,7 +2086,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.16.0'
+    Value: '3.0.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
