@@ -321,12 +321,12 @@ Parameters:
     Default: true
     AllowedValues: [true, false]
   ESSoftwareUpdateFailed:
-    Description: 'Receive an alert, if an ES software update fails.'
+    Description: 'Receive an alert, if an Elasticsearch/OpenSearch software update fails.'
     Type: String
     Default: true
     AllowedValues: [true, false]
   ESSoftwareUpdateNotifications:
-    Description: 'Receive notifications about ES software updates.'
+    Description: 'Receive notifications about Elasticsearch/OpenSearch software updates.'
     Type: String
     Default: true
     AllowedValues: [true, false]
@@ -518,7 +518,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "3.0.0",
+            "StackVersion": "3.1.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1776,12 +1776,13 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Alerts from ES software updates. (created by marbot)'
+      Description: 'Alerts from Elasticsearch/OpenSearch software updates. (created by marbot)'
       EventPattern:
         source:
         - 'aws.es'
         'detail-type':
         - 'Amazon ES Service Software Update Notification'
+        - 'Amazon OpenSearch Service Software Update Notification'
         detail:
           status:
           - Failed
@@ -1794,12 +1795,13 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Notifications from ES software updates. (created by marbot)'
+      Description: 'Notifications from Elasticsearch/OpenSearch software updates. (created by marbot)'
       EventPattern:
         source:
         - 'aws.es'
         'detail-type':
         - 'Amazon ES Service Software Update Notification'
+        - 'Amazon OpenSearch Service Software Update Notification'
         detail:
           status:
           - Available
@@ -2086,7 +2088,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '3.0.0'
+    Value: '3.1.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
