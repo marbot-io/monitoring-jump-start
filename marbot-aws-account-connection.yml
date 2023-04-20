@@ -121,7 +121,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-aws-account-connection",
-            "StackVersion": "1.1.2",
+            "StackVersion": "1.1.3",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -224,6 +224,8 @@ Resources:
               Action:
               - 'rds:CreateEventSubscription'
               - 'rds:DeleteEventSubscription'
+              - 'rds:AddSourceIdentifierToSubscription'
+              - 'rds:RemoveSourceIdentifierFromSubscription'
               - 'rds:DescribeEventSubscriptions'
               - 'rds:ListTagsForResource'
               - 'rds:ModifyEventSubscription'
@@ -322,7 +324,7 @@ Resources:
       MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
       MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
-      CloudFormationStackVersion: '1.1.2'
+      CloudFormationStackVersion: '1.1.3'
       CloudFormationStackRegion: !Ref 'AWS::Region'
       CloudFormationStackId: !Ref 'AWS::StackId'
       CloudFormationStackName: !Ref 'AWS::StackName'
@@ -335,4 +337,4 @@ Outputs:
     Value: 'marbot-aws-account-connection'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.2'
+    Value: '1.1.3'
