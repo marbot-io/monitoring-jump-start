@@ -121,7 +121,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-aws-account-connection",
-            "StackVersion": "1.1.3",
+            "StackVersion": "1.2.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -178,10 +178,17 @@ Resources:
               Action:
               - 'elasticloadbalancing:DescribeLoadBalancers'
               - 'elasticloadbalancing:DescribeTargetGroups'
+              - 'elasticloadbalancing:DescribeTags'
+              - 'elasticloadbalancing:DescribeLoadBalancerAttributes'
+              - 'elasticloadbalancing:DescribeTargetGroupAttributes'
               - 'autoscaling:DescribeAutoScalingGroups'
               - 'ec2:DescribeInstances'
               - 'rds:DescribeDBClusters'
+              - 'rds:ListTagsForResource'
               - 'sqs:ListQueues'
+              - 'sqs:GetQueueUrl'
+              - 'sqs:ListQueueTags'
+              - 'sqs:GetQueueAttributes'
               - 'ec2:DescribeAccountAttributes'
               - 'ec2:DescribeInstanceAttribute'
               - 'ec2:DescribeInstanceCreditSpecifications'
@@ -324,7 +331,7 @@ Resources:
       MarbotFeatureAccountAlias: !Ref AccountAlias
       MarbotFeatureCloudWatchMetricGraph: !Ref CloudWatchMetricGraph
       MarbotFeatureCodePipelineApproval: !Ref CodePipelineApproval
-      CloudFormationStackVersion: '1.1.3'
+      CloudFormationStackVersion: '1.2.0'
       CloudFormationStackRegion: !Ref 'AWS::Region'
       CloudFormationStackId: !Ref 'AWS::StackId'
       CloudFormationStackName: !Ref 'AWS::StackName'
@@ -337,4 +344,4 @@ Outputs:
     Value: 'marbot-aws-account-connection'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.3'
+    Value: '1.2.0'
