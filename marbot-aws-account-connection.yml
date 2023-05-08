@@ -182,7 +182,6 @@ Resources:
               - 'elasticloadbalancing:DescribeLoadBalancerAttributes'
               - 'elasticloadbalancing:DescribeTargetGroupAttributes'
               - 'autoscaling:DescribeAutoScalingGroups'
-              - 'autoscaling:DescribeTags'
               - 'ec2:DescribeInstances'
               - 'rds:DescribeDBClusters'
               - 'rds:ListTagsForResource'
