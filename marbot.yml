@@ -518,7 +518,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "3.1.0",
+            "StackVersion": "3.1.1",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -1262,6 +1262,9 @@ Resources:
         'detail-type':
         - 'Configuration Compliance State Change'
         detail:
+          'compliance-type':
+          - Patch
+          - Association
           'compliance-status':
           - non_compliant
       State: ENABLED
@@ -2091,7 +2094,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '3.1.0'
+    Value: '3.1.1'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
