@@ -71,6 +71,7 @@ Metadata:
       - AppFlowFailed
       - EC2FleetFailed
       - ElasticBeanstalkFailed
+      - Inspector2Finding
     - Label:
         default: 'Notifications'
       Parameters:
@@ -375,6 +376,11 @@ Parameters:
     Type: String
     Default: true
     AllowedValues: [true, false]
+  Inspector2Finding:
+    Description: 'Receive an alert, if an Inspector2 finding is created.'
+    Type: String
+    Default: true
+    AllowedValues: [true, false]
 Conditions:
   NorthVirginia: !Equals [!Ref 'AWS::Region', 'us-east-1']
   TestEnabled: !Equals [!Ref Test, 'true']
@@ -439,6 +445,7 @@ Conditions:
   EC2FleetFailedEnabled: !Equals [!Ref EC2FleetFailed, 'true']
   ECSDeploymentNotificationsEnabled: !Equals [!Ref ECSDeploymentNotifications, 'true']
   ElasticBeanstalkFailedEnabled: !Equals [!Ref ElasticBeanstalkFailed, 'true']
+  Inspector2FindingEnabled: !Equals [!Ref Inspector2Finding, 'true']
 Resources:
   ##########################################################################
   #                                                                        #
@@ -1705,7 +1712,7 @@ Resources:
     DependsOn: TopicEndpointSubscription
     Type: 'AWS::Events::Rule'
     Properties:
-      Description: 'Findings from AWS ECR Image Scans. (created by marbot)'
+      Description: 'Findings (severity >= medium) from AWS ECR Image Scans. (created by marbot)'
       EventPattern:
         source:
         - 'aws.ecr'
@@ -1996,6 +2003,29 @@ Resources:
       Targets:
       - Arn: !Ref Topic
         Id: marbot
+  Inspector2FindingEvent:
+    Condition: Inspector2FindingEnabled
+    DependsOn: TopicEndpointSubscription
+    Type: 'AWS::Events::Rule'
+    Properties:
+      Description: 'Findings (severity >= medium) from Amazon Inspector2. (created by marbot)'
+      EventPattern:
+        source:
+        - 'aws.inspector2'
+        detail-type:
+        - 'Inspector2 Finding'
+        detail:
+          severity:
+          - MEDIUM
+          - HIGH
+          - CRITICAL
+          - UNTRIAGED
+          status:
+          - ACTIVE
+      State: ENABLED
+      Targets:
+      - Arn: !Ref Topic
+        Id: marbot
   ##########################################################################
   #                                                                        #
   #                                  TEST                                  #
@@ -2094,7 +2124,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '3.1.1'
+    Value: '3.2.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
