@@ -119,7 +119,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-lambda-function",
-            "StackVersion": "1.1.1",
+            "StackVersion": "1.1.2",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -140,11 +140,11 @@ Resources:
       - !Ref Topic
       AlarmDescription: 'Invocations failed due to errors'
       ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
+      DatapointsToAlarm: 1 # We use a 1 out of 18 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch and the fact that Lambda uses the invocation timestamp for metric data
       Dimensions:
       - Name: FunctionName
         Value: !Ref FunctionName
-      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
+      EvaluationPeriods: 18 # We use a 1 out of 18 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch and the fact that Lambda uses the invocation timestamp for metric data
       MetricName: Errors
       Namespace: 'AWS/Lambda'
       OKActions:
@@ -162,11 +162,11 @@ Resources:
       - !Ref Topic
       AlarmDescription: 'Invocation attempts were throttled due to invocation rates exceeding the concurrent limits'
       ComparisonOperator: GreaterThanThreshold
-      DatapointsToAlarm: 1 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
+      DatapointsToAlarm: 1 # We use a 1 out of 18 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch and the fact that Lambda uses the invocation timestamp for metric data
       Dimensions:
       - Name: FunctionName
         Value: !Ref FunctionName
-      EvaluationPeriods: 3 # We use a 1 out of 3 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch
+      EvaluationPeriods: 18 # We use a 1 out of 18 alarm: if we only look at one period we might miss an error because of the eventual consistent nature of CloudWatch and the fact that Lambda uses the invocation timestamp for metric data
       MetricName: Throttles
       Namespace: 'AWS/Lambda'
       OKActions:
@@ -184,4 +184,4 @@ Outputs:
     Value: 'marbot-lambda-function'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.1'
+    Value: '1.1.2'
