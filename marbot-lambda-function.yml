@@ -119,7 +119,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-lambda-function",
-            "StackVersion": "1.1.1",
+            "StackVersion": "1.1.2",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -184,4 +184,4 @@ Outputs:
     Value: 'marbot-lambda-function'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.1'
+    Value: '1.1.2'
