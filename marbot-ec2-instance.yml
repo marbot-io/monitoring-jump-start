@@ -445,9 +445,9 @@ Resources:
         ZipFile: |
           'use strict';
           const https = require('https');
-          const AWS = require('aws-sdk');
           const response = require('cfn-response');
-          const ec2 = new AWS.EC2({apiVersion: '2016-11-15'});
+          const { EC2Client, DescribeInstancesCommand } = require('@aws-sdk/client-ec2');
+          const ec2 = new EC2Client({apiVersion: '2016-11-15'});
           function getData(cb) {
             https.get('https://s3-eu-west-1.amazonaws.com/monitoring-jump-start/data/network.json', (res) => {
               if (res.statusCode === 200) {
@@ -482,9 +482,9 @@ Resources:
                   console.log(`Error: ${JSON.stringify(err)}`);
                   response.send(event, context, response.FAILED, {});
                 } else {
-                  ec2.describeInstances({
+                  ec2.send(new DescribeInstancesCommand({
                     InstanceIds: [event.ResourceProperties.InstanceId]
-                  }, (err, instanceData) => {
+                  }), (err, instanceData) => {
                     if (err) {
                       console.log(`Error: ${JSON.stringify(err)}`);
                       response.send(event, context, response.FAILED, {});
@@ -522,7 +522,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'LambdaRole.Arn'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       Timeout: 60
   LambdaLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -538,4 +538,4 @@ Outputs:
     Value: 'marbot-ec2-instance'
   StackVersion:
     Description: 'Stack version.'
-    Value: '2.5.0'
+    Value: '2.6.0'

@@ -835,7 +835,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 1024
       Timeout: 30
       Role: !GetAtt 'CloudWatchAlarmFilterRole.Arn'
@@ -845,9 +845,10 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk')
-          const cloudwatch = new AWS.CloudWatch({apiVersion: '2010-08-01'});
-          const sns = new AWS.SNS({apiVersion: '2010-03-31'});
+          const { CloudWatchClient, DescribeAlarmsCommand } = require('@aws-sdk/client-cloudwatch'); 
+          const cloudwatch = new CloudWatchClient({apiVersion: '2010-08-01'});
+          const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+          const sns = new SNSClient({apiVersion: '2010-03-31'});
           const STATE2ACTION = {
             'ALARM': 'AlarmActions',
             'OK': 'OKActions',
@@ -855,10 +856,10 @@ Resources:
           };
           exports.handler = async (event) => {
             console.log(JSON.stringify(event));
-            const data = await cloudwatch.describeAlarms({
+            const data = await cloudwatch.send(new DescribeAlarmsCommand({
               AlarmNames: [event.detail.alarmName],
               MaxRecords: 1
-            }).promise();
+            }));
             const alarms = [...data.CompositeAlarms, ...data.MetricAlarms];
             console.log(JSON.stringify(alarms));
             if (alarms.length === 0) {
@@ -873,10 +874,10 @@ Resources:
                   console.log("drop");
                 } else {
                   console.log("publish");
-                  await sns.publish({
+                  await sns.send(new PublishCommand({
                     TopicArn: process.env.TOPIC_ARN,
                     Message: JSON.stringify(event)
-                  }).promise();
+                  }));
                 }
               }
             }
@@ -1517,18 +1518,18 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 1024
       Timeout: 30
       Role: !GetAtt 'SecurityHubWorkflowRole.Arn'
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk')
-          const securityhub = new AWS.SecurityHub({apiVersion: '2018-10-26'});
+          const { SecurityHubClient, BatchUpdateFindingsCommand } = require('@aws-sdk/client-securityhub');
+          const securityhub = new SecurityHubClient({apiVersion: '2018-10-26'});
           exports.handler = async (event) => {
             console.log(JSON.stringify(event));
-            await securityhub.batchUpdateFindings({
+            await securityhub.send(new BatchUpdateFindingsCommand({
               FindingIdentifiers: event.detail.findings.map((finding) => ({
                 Id: finding.Id,
                 ProductArn: finding.ProductArn
@@ -1536,7 +1537,7 @@ Resources:
               Workflow: {
                 Status: 'NOTIFIED'
               }
-            }).promise();
+            }));
           };
   SecurityHubWorkflowAlarmErrorsTooHigh:
     Condition: SecurityHubFindingEnabled
@@ -2093,7 +2094,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'TestAlertFunctionRole.Arn'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       Timeout: 30
   TestAlertFunctionRole:
     Condition: TestEnabled
@@ -2124,7 +2125,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '3.2.0'
+    Value: '3.3.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
