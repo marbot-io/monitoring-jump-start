@@ -409,7 +409,7 @@ Resources:
                 } else {
                   ec2.send(new DescribeInstancesCommand({
                     InstanceIds: [event.ResourceProperties.InstanceId]
-                  }, (err, instanceData) => {
+                  }), (err, instanceData) => {
                     if (err) {
                       console.log(`Error: ${JSON.stringify(err)}`);
                       response.send(event, context, response.FAILED, {});
