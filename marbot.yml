@@ -845,7 +845,7 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const { CloudWatchClient, DescribeAlarmsCommand } = require('@aws-sdk/client-cloudwatch'); 
+          const { CloudWatchClient, DescribeAlarmsCommand } = require('@aws-sdk/client-cloudwatch');
           const cloudwatch = new CloudWatchClient({apiVersion: '2010-08-01'});
           const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
           const sns = new SNSClient({apiVersion: '2010-03-31'});
