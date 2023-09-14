@@ -92,7 +92,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-cloudformation-drift",
-            "StackVersion": "1.5.0",
+            "StackVersion": "1.6.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -425,7 +425,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleTrigger.Arn'
@@ -436,9 +436,10 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk')
-          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
-          const stepfunctions = new AWS.StepFunctions({apiVersion: '2016-11-23'});
+          const { CloudFormationClient, ListStacksCommand } = require('@aws-sdk/client-cloudformation');
+          const cloudformation = new CloudFormationClient({apiVersion: '2010-05-15'});
+          const { SFNClient, StartExecutionCommand } = require('@aws-sdk/client-sfn');
+          const stepfunctions = new SFNClient({apiVersion: '2016-11-23'});
           let trigger = async (nextToken) => {
             let params = {
               StackStatusFilter: ['CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', 'UPDATE_ROLLBACK_FAILED']
@@ -446,10 +447,10 @@ Resources:
             if (nextToken) {
               params.NextToken = nextToken;
             }
-            const listStacksResult = await cloudformation.listStacks(params).promise();
+            const listStacksResult = await cloudformation.send(new ListStacksCommand(params));
             const stacks = listStacksResult.StackSummaries.filter(stack => stack.StackName.match(new RegExp(process.env.STACK_REGEXP)));
             for (let stack of stacks) {
-              await stepfunctions.startExecution({stateMachineArn: process.env.STATEMACHINE_ARN, input: JSON.stringify({stackName: stack.StackName})}).promise();
+              await stepfunctions.send(new StartExecutionCommand({stateMachineArn: process.env.STATEMACHINE_ARN, input: JSON.stringify({stackName: stack.StackName})}));
             }
             if (listStacksResult.NextToken) {
               trigger(listStacksResult.NextToken);
@@ -468,17 +469,17 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDriftStatus.Arn'
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk')
-          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          const { CloudFormationClient, DescribeStacksCommand } = require('@aws-sdk/client-cloudformation');
+          const cloudformation = new CloudFormationClient({apiVersion: '2010-05-15'});
           exports.handler = async (event, context) => {
-            const result = await cloudformation.describeStacks({StackName: event.stackName}).promise();
+            const result = await cloudformation.send(new DescribeStacksCommand({StackName: event.stackName}));
             const driftStatus = result.Stacks[0].DriftInformation.StackDriftStatus;
             const arn = result.Stacks[0].StackId;
             return Object.assign({}, event, {previousDriftStatus: driftStatus, stackArn: arn});
@@ -492,17 +493,17 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleStartDriftDetection.Arn'
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk')
-          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          const { CloudFormationClient, DetectStackDriftCommand } = require('@aws-sdk/client-cloudformation');
+          const cloudformation = new CloudFormationClient({apiVersion: '2010-05-15'});
           exports.handler = async (event, context) => {
-            const result = await cloudformation.detectStackDrift({StackName: event.stackName}).promise();
+            const result = await cloudformation.send(new DetectStackDriftCommand({StackName: event.stackName}));
             return Object.assign({}, event, {stackDriftDetectionId: result.StackDriftDetectionId});
           };
   LogGroupStartDriftDetection:
@@ -514,17 +515,17 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDetectionStatus.Arn'
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk')
-          const cloudformation = new AWS.CloudFormation({apiVersion: '2010-05-15'});
+          const { CloudFormationClient, DescribeStackDriftDetectionStatusCommand } = require('@aws-sdk/client-cloudformation');
+          const cloudformation = new CloudFormationClient({apiVersion: '2010-05-15'});
           exports.handler = async (event, context) => {
-            const result = await cloudformation.describeStackDriftDetectionStatus({StackDriftDetectionId: event.stackDriftDetectionId}).promise();
+            const result = await cloudformation.send(new DescribeStackDriftDetectionStatusCommand({StackDriftDetectionId: event.stackDriftDetectionId}));
             return Object.assign({}, event, {detectionStatus: result.DetectionStatus, latestDriftStatus: result.StackDriftStatus});
           };
   LogGroupFetchDetectionStatus:
@@ -536,7 +537,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleSendDriftNotification.Arn'
@@ -549,8 +550,8 @@ Resources:
         ZipFile: |
           'use strict';
           const querystring = require('querystring');
-          const AWS = require('aws-sdk')
-          const sns = new AWS.SNS({apiVersion: '2010-03-31'});
+          const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+          const sns = new SNSClient({apiVersion: '2010-03-31'});
           exports.handler = async (event, context) => {
             const url = `https://console.aws.amazon.com/cloudformation/home?region=${process.env.REGION}#/stacks/drifts?stackId=${querystring.escape(event.stackArn)}`;
             const msg = {
@@ -560,7 +561,7 @@ Resources:
               Message: `CloudFormation drift detected, stage changed from ${event.previousDriftStatus} to ${event.latestDriftStatus}.`,
               'Quick Links': url
             }
-            await sns.publish({
+            await sns.send(new PublishCommand({
               TopicArn: process.env.TOPIC_ARN,
               Message: JSON.stringify(msg),
               MessageAttributes: {
@@ -569,7 +570,7 @@ Resources:
                   StringValue: event.stackArn
                 }
               }
-            }).promise();
+            }));
             return event;
           };
   LogGroupSendDriftNotification:
@@ -586,4 +587,4 @@ Outputs:
     Value: 'marbot-cloudformation-drift'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.5.0'
+    Value: '1.6.0'

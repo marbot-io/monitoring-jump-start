@@ -127,7 +127,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-elasticache-memcached",
-            "StackVersion": "1.6.0",
+            "StackVersion": "1.7.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -219,8 +219,8 @@ Resources:
         ZipFile: |
           'use strict';
           const response = require('cfn-response');
-          const AWS = require('aws-sdk');
-          const elasticache = new AWS.ElastiCache({apiVersion: '2015-02-02'});
+          const { ElastiCacheClient, DescribeCacheClustersCommand, ModifyCacheClusterCommand } = require('@aws-sdk/client-elasticache');
+          const elasticache = new ElastiCacheClient({apiVersion: '2015-02-02'});
           exports.handler = (event, context, cb) => {
             console.log(JSON.stringify(event));
             const failed = (err) => {
@@ -237,9 +237,9 @@ Resources:
               }
             };
             const describe = (cacheClusterId, cb) => {
-              elasticache.describeCacheClusters({
+              elasticache.send(new DescribeCacheClustersCommand({
                 CacheClusterId: cacheClusterId,
-              }, function(err, data) {
+              }), function(err, data) {
                 if (err) {
                   failed(err);
                 } else {
@@ -254,12 +254,12 @@ Resources:
               });
             };
             const modify = (cacheClusterId, notificationTopicArn, notificationTopicStatus, cb) => {
-              elasticache.modifyCacheCluster({
+              elasticache.send(new ModifyCacheClusterCommand({
                 CacheClusterId: cacheClusterId,
                 ApplyImmediately: true,
                 NotificationTopicArn: notificationTopicArn,
                 NotificationTopicStatus: notificationTopicStatus
-              }, function(err, data) {
+              }), function(err, data) {
                 if (err) {
                   failed(err);
                 } else {
@@ -318,7 +318,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'CustomNotificationTopicConfigurationRole.Arn'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       Timeout: 10
   CustomNotificationTopicConfigurationRole:
     Type: 'AWS::IAM::Role'
@@ -350,4 +350,4 @@ Outputs:
     Value: 'marbot-elasticache-memcached'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.6.0'
+    Value: '1.7.0'

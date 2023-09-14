@@ -127,7 +127,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-interface-endpoint",
-            "StackVersion": "1.0.0",
+            "StackVersion": "1.1.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -276,17 +276,17 @@ Resources:
       Code:
         ZipFile: |
           'use strict';
-          const AWS = require('aws-sdk');
           const response = require('cfn-response');
-          const ec2 = new AWS.EC2({apiVersion: '2016-11-15'});
+          const { EC2Client, DescribeVpcEndpointsCommand } = require('@aws-sdk/client-ec2');
+          const ec2 = new EC2Client({apiVersion: '2016-11-15'});
           exports.handler = (event, context) => {
             console.log(`Invoke: ${JSON.stringify(event)}`);
             if (event.RequestType === 'Delete') {
               response.send(event, context, response.SUCCESS, {});
             } else if (event.RequestType === 'Create' || event.RequestType === 'Update') {
-              ec2.describeVpcEndpoints({
+              ec2.send(new DescribeVpcEndpointsCommand({
                 VpcEndpointIds: [event.ResourceProperties.EndpointId]
-              }, (err, data) => {
+              }), (err, data) => {
                 if (err) {
                   console.log(`Error: ${JSON.stringify(err)}`);
                   response.send(event, context, response.FAILED, {});
@@ -304,7 +304,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'LambdaRole.Arn'
-      Runtime: 'nodejs16.x'
+      Runtime: 'nodejs18.x'
       Timeout: 60
   LambdaLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -320,4 +320,4 @@ Outputs:
     Value: 'marbot-interface-endpoint'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.0.0'
+    Value: '1.1.0'
