@@ -219,7 +219,7 @@ Resources:
         ZipFile: |
           'use strict';
           const response = require('cfn-response');
-          const { ElastiCacheClient, DescribeCacheClusterCommand, ModifyCacheClusterCommand } = require('@aws-sdk/client-elasticache');
+          const { ElastiCacheClient, DescribeCacheClustersCommand, ModifyCacheClusterCommand } = require('@aws-sdk/client-elasticache');
           const elasticache = new ElastiCacheClient({apiVersion: '2015-02-02'});
           exports.handler = (event, context, cb) => {
             console.log(JSON.stringify(event));
@@ -237,7 +237,7 @@ Resources:
               }
             };
             const describe = (cacheClusterId, cb) => {
-              elasticache.send(new DescribeCacheClusterCommand({
+              elasticache.send(new DescribeCacheClustersCommand({
                 CacheClusterId: cacheClusterId,
               }), function(err, data) {
                 if (err) {
