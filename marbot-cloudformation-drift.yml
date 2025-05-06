@@ -92,7 +92,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-cloudformation-drift",
-            "StackVersion": "1.6.0",
+            "StackVersion": "1.7.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -425,7 +425,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleTrigger.Arn'
@@ -469,7 +469,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDriftStatus.Arn'
@@ -493,7 +493,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleStartDriftDetection.Arn'
@@ -515,7 +515,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleFetchDetectionStatus.Arn'
@@ -537,7 +537,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 128
       Timeout: 30
       Role: !GetAtt 'RoleSendDriftNotification.Arn'
@@ -587,4 +587,4 @@ Outputs:
     Value: 'marbot-cloudformation-drift'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.6.0'
+    Value: '1.7.0'

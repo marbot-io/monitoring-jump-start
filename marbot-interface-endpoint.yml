@@ -127,7 +127,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot-interface-endpoint",
-            "StackVersion": "1.1.0",
+            "StackVersion": "1.2.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -304,7 +304,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'LambdaRole.Arn'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       Timeout: 60
   LambdaLogGroup:
     Type: 'AWS::Logs::LogGroup'
@@ -320,4 +320,4 @@ Outputs:
     Value: 'marbot-interface-endpoint'
   StackVersion:
     Description: 'Stack version.'
-    Value: '1.1.0'
+    Value: '1.2.0'

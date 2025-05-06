@@ -525,7 +525,7 @@ Resources:
           {
             "Type": "monitoring-jump-start-connection",
             "StackTemplate": "marbot",
-            "StackVersion": "3.3.0",
+            "StackVersion": "3.4.0",
             "Partition": "${AWS::Partition}",
             "AccountId": "${AWS::AccountId}",
             "Region": "${AWS::Region}",
@@ -835,7 +835,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 1024
       Timeout: 30
       Role: !GetAtt 'CloudWatchAlarmFilterRole.Arn'
@@ -1518,7 +1518,7 @@ Resources:
     Type: 'AWS::Lambda::Function'
     Properties:
       Handler: 'index.handler'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       MemorySize: 1024
       Timeout: 30
       Role: !GetAtt 'SecurityHubWorkflowRole.Arn'
@@ -2094,7 +2094,7 @@ Resources:
       Handler: 'index.handler'
       MemorySize: 128
       Role: !GetAtt 'TestAlertFunctionRole.Arn'
-      Runtime: 'nodejs18.x'
+      Runtime: 'nodejs22.x'
       Timeout: 30
   TestAlertFunctionRole:
     Condition: TestEnabled
@@ -2125,7 +2125,7 @@ Outputs:
     Value: 'marbot'
   StackVersion:
     Description: 'Stack version.'
-    Value: '3.3.0'
+    Value: '3.4.0'
   TopicName:
     Description: 'The name of the SNS topic.'
     Value: !GetAtt 'Topic.TopicName'
