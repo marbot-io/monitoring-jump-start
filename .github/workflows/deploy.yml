@@ -14,11 +14,8 @@ jobs:
   deploy:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.8'
-    - uses: aws-actions/configure-aws-credentials@v1-node16
+    - uses: actions/checkout@v4
+    - uses: aws-actions/configure-aws-credentials@v4
       with:
         role-to-assume: arn:aws:iam::853553028582:role/github-openid-connect
         role-session-name: github-actions-monitoring-jump-start

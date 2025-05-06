@@ -14,12 +14,12 @@ jobs:
   test:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-python@v4
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
       with:
-        python-version: '3.8'
+        python-version: '3.13'
     - run: |
-        pip install cfn-lint==0.79.8
+        pip install cfn-lint==1.34.2
         yamllint *.yml
         cfn-lint -t *.yml
         find . -name 'marbot*.yml' | while read file; do set -ex && grep -q "LICENSE-2.0" "$file"; done;
